@@ -1,8 +1,6 @@
 use crate::rule::Rule;
-use std::{
-    collections::HashMap,
-    ops::{Index, IndexMut},
-};
+use rustc_hash::FxHashMap;
+use std::ops::{Index, IndexMut};
 
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 struct NodeId(usize);
@@ -85,7 +83,7 @@ pub struct World {
     rule: Rule,
     generation: u64,
     step: u8,
-    hash_table: HashMap<QuadChildren, NodeId>,
+    hash_table: FxHashMap<QuadChildren, NodeId>,
     node_data: Vec<NodeData>,
     empty_nodes: Vec<Node>,
     root: Node,
@@ -107,7 +105,7 @@ impl IndexMut<NodeId> for World {
 
 impl World {
     pub fn new(rule: Rule, step: u8) -> Self {
-        let hash_table = HashMap::new();
+        let hash_table = FxHashMap::default();
         let node_data = Vec::new();
         let empty_nodes = Vec::new();
         let root = Node::Leaf(0);

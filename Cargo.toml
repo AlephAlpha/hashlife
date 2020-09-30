@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 ca-rules = "0.3.2"
+rustc-hash = "1.1.0"
 
 [dev-dependencies]
 ca-formats = "0.1.3"
