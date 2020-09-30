@@ -1,9 +1,6 @@
 use ca_rules::{ParseNtLife, ParseRuleError};
 use std::str::FromStr;
 
-/// The simplest way to represent a rule:
-///
-/// A lookup table that computes the result of the central cell for each 3x3 grid.
 struct Rule3x3 {
     rule_table: [bool; 1 << 9],
 }
@@ -25,16 +22,6 @@ impl ParseNtLife for Rule3x3 {
     }
 }
 
-/// Nontotalistic Life-like cellular automata rules.
-///
-/// The rule is represented by a lookup table that computes the result (as a 2x2 grid)
-/// for each 4x4 grid.
-///
-/// The result is a 6-bit integer, where the first 2 bits represents the top row of the
-/// 2x2 grid, and the last 2 bits represents the top row of the bottom row. The middle
-/// 2 bits are always zero.
-///
-/// B0 rules are not yet supported.
 pub struct Rule {
     pub rule_table: [u8; 1 << 16],
 }

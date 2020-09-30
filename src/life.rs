@@ -4,20 +4,16 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-/// The id of a node, i.e., its index in the world's node list.
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 struct NodeId(usize);
-/// A leaf, i.e., a 4x4 grid, represented by a 16-bit integer.
 type Leaf = u16;
 
-/// A node or a leaf.
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 enum Node {
     Leaf(u16),
     NodeId(NodeId),
 }
 
-/// Four children of a node.
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 enum QuadChildren {
     Leaf {
@@ -76,27 +72,21 @@ impl QuadChildren {
     }
 }
 
-/// Children, cached results, and other data.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct NodeData {
-    /// A node with level `n` represents a square grid with size `2.pow(n)`.
     level: u8,
     population: u64,
     children: QuadChildren,
-    /// The result of evolving the specified number of steps.
     cache_step: Option<Node>,
-    /// The result of evolving `2.pow(level - 2)` steps.
     cache_step_max: Option<Node>,
 }
 
 pub struct World {
     rule: Rule,
     generation: u64,
-    /// The actual step is `2.pow(step)`.
     step: u8,
     hash_table: HashMap<QuadChildren, NodeId>,
     node_data: Vec<NodeData>,
-    /// Cached empty nodes.
     empty_nodes: Vec<Node>,
     root: Node,
 }
@@ -156,6 +146,35 @@ impl World {
             self.expand();
         }
         self.root = self.set_cell_node(self.root, x, y, state);
+    }
+
+    pub fn get_step(&self) -> u8 {
+        self.step
+    }
+
+    pub fn set_step(&mut self, step: u8) {
+        self.clear_cache();
+        self.step = step;
+    }
+
+    pub fn get_generation(&self) -> u64 {
+        self.generation
+    }
+
+    pub fn set_generation(&mut self, generation: u64) {
+        self.generation = generation;
+    }
+
+    pub fn clear(&mut self, clear_nodes: bool) {
+        if clear_nodes {
+            self.hash_table.clear();
+            self.empty_nodes.clear();
+            self.node_data.clear();
+        } else {
+            self.clear_cache();
+        }
+        self.generation = 0;
+        self.root = Node::Leaf(0);
     }
 
     fn empty_node(&mut self, level: u8) -> Node {
@@ -223,6 +242,12 @@ impl World {
                 }
             },
         }
+    }
+
+    fn clear_cache(&mut self) {
+        self.node_data.iter_mut().for_each(|node| {
+            node.cache_step.take();
+        })
     }
 
     fn find_node(&mut self, nw: Node, ne: Node, sw: Node, se: Node) -> NodeId {
