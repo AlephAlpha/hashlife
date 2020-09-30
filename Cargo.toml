@@ -11,3 +11,8 @@ ca-rules = "0.3.2"
 
 [dev-dependencies]
 ca-formats = "0.1.3"
+criterion = "0.3.3"
+
+[[bench]]
+name = "bench"
+harness = false
