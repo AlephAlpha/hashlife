@@ -40,34 +40,6 @@ impl QuadChildren {
             _ => unreachable!("All children must have the same level."),
         }
     }
-
-    fn nw(self) -> Node {
-        match self {
-            QuadChildren::NodeId { nw, .. } => Node::NodeId(nw),
-            QuadChildren::Leaf { nw, .. } => Node::Leaf(nw),
-        }
-    }
-
-    fn ne(self) -> Node {
-        match self {
-            QuadChildren::NodeId { ne, .. } => Node::NodeId(ne),
-            QuadChildren::Leaf { ne, .. } => Node::Leaf(ne),
-        }
-    }
-
-    fn sw(self) -> Node {
-        match self {
-            QuadChildren::NodeId { sw, .. } => Node::NodeId(sw),
-            QuadChildren::Leaf { sw, .. } => Node::Leaf(sw),
-        }
-    }
-
-    fn se(self) -> Node {
-        match self {
-            QuadChildren::NodeId { se, .. } => Node::NodeId(se),
-            QuadChildren::Leaf { se, .. } => Node::Leaf(se),
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -77,6 +49,36 @@ struct NodeData {
     children: QuadChildren,
     cache_step: Option<Node>,
     cache_step_max: Option<Node>,
+}
+
+impl NodeData {
+    fn nw(&self) -> Node {
+        match self.children {
+            QuadChildren::NodeId { nw, .. } => Node::NodeId(nw),
+            QuadChildren::Leaf { nw, .. } => Node::Leaf(nw),
+        }
+    }
+
+    fn ne(&self) -> Node {
+        match self.children {
+            QuadChildren::NodeId { ne, .. } => Node::NodeId(ne),
+            QuadChildren::Leaf { ne, .. } => Node::Leaf(ne),
+        }
+    }
+
+    fn sw(&self) -> Node {
+        match self.children {
+            QuadChildren::NodeId { sw, .. } => Node::NodeId(sw),
+            QuadChildren::Leaf { sw, .. } => Node::Leaf(sw),
+        }
+    }
+
+    fn se(&self) -> Node {
+        match self.children {
+            QuadChildren::NodeId { se, .. } => Node::NodeId(se),
+            QuadChildren::Leaf { se, .. } => Node::Leaf(se),
+        }
+    }
 }
 
 pub struct World {
@@ -134,7 +136,7 @@ impl World {
         while self.node_level(self.root) <= self.step + 1 || self.should_expand() {
             self.expand()
         }
-        self.root = self.step_node(self.root, self.step);
+        self.root = self.step_node(self.root);
         self.generation += 1 << self.step;
     }
 
@@ -213,10 +215,10 @@ impl World {
             Node::NodeId(id) => {
                 let level = self[id].level;
                 let empty = self.empty_node(level - 1);
-                let nw = Node::NodeId(self.find_node(empty, empty, empty, self[id].children.nw()));
-                let ne = Node::NodeId(self.find_node(empty, empty, self[id].children.ne(), empty));
-                let sw = Node::NodeId(self.find_node(empty, self[id].children.sw(), empty, empty));
-                let se = Node::NodeId(self.find_node(self[id].children.se(), empty, empty, empty));
+                let nw = Node::NodeId(self.find_node(empty, empty, empty, self[id].nw()));
+                let ne = Node::NodeId(self.find_node(empty, empty, self[id].ne(), empty));
+                let sw = Node::NodeId(self.find_node(empty, self[id].sw(), empty, empty));
+                let se = Node::NodeId(self.find_node(self[id].se(), empty, empty, empty));
                 self.root = Node::NodeId(self.find_node(nw, ne, sw, se));
             }
         }
@@ -230,21 +232,21 @@ impl World {
                     nw & 0xfffe != 0 || ne & 0xfff7 != 0 || sw & 0xefff != 0 || se & 0x7fff != 0
                 }
                 QuadChildren::NodeId { nw, ne, sw, se } => {
-                    let nw_se_se = match self[nw].children.se() {
+                    let nw_se_se = match self[nw].se() {
                         Node::Leaf(leaf) => (leaf & 0x0033).count_ones() as u64,
-                        Node::NodeId(id) => self.node_population(self[id].children.se()),
+                        Node::NodeId(id) => self.node_population(self[id].se()),
                     };
-                    let ne_sw_sw = match self[ne].children.sw() {
+                    let ne_sw_sw = match self[ne].sw() {
                         Node::Leaf(leaf) => (leaf & 0x00cc).count_ones() as u64,
-                        Node::NodeId(id) => self.node_population(self[id].children.sw()),
+                        Node::NodeId(id) => self.node_population(self[id].sw()),
                     };
-                    let sw_ne_ne = match self[sw].children.ne() {
+                    let sw_ne_ne = match self[sw].ne() {
                         Node::Leaf(leaf) => (leaf & 0x3300).count_ones() as u64,
-                        Node::NodeId(id) => self.node_population(self[id].children.ne()),
+                        Node::NodeId(id) => self.node_population(self[id].ne()),
                     };
-                    let se_nw_nw = match self[se].children.nw() {
+                    let se_nw_nw = match self[se].nw() {
                         Node::Leaf(leaf) => (leaf & 0xcc00).count_ones() as u64,
-                        Node::NodeId(id) => self.node_population(self[id].children.nw()),
+                        Node::NodeId(id) => self.node_population(self[id].nw()),
                     };
                     self[nw].population != nw_se_se
                         || self[ne].population != ne_sw_sw
@@ -325,12 +327,10 @@ impl World {
         match node {
             Node::Leaf(leaf) => leaf & 1 << ((1 - y) * 4 + (1 - x)) != 0,
             Node::NodeId(id) => match (x.is_negative(), y.is_negative()) {
-                (true, true) => self.get_cell_node(self[id].children.nw(), x + offset, y + offset),
-                (false, true) => self.get_cell_node(self[id].children.ne(), x - offset, y + offset),
-                (true, false) => self.get_cell_node(self[id].children.sw(), x + offset, y - offset),
-                (false, false) => {
-                    self.get_cell_node(self[id].children.se(), x - offset, y - offset)
-                }
+                (true, true) => self.get_cell_node(self[id].nw(), x + offset, y + offset),
+                (false, true) => self.get_cell_node(self[id].ne(), x - offset, y + offset),
+                (true, false) => self.get_cell_node(self[id].sw(), x + offset, y - offset),
+                (false, false) => self.get_cell_node(self[id].se(), x - offset, y - offset),
             },
         }
     }
@@ -350,11 +350,11 @@ impl World {
                 }
             }
             Node::NodeId(id) => {
-                let children = self[id].children;
-                let mut nw = children.nw();
-                let mut ne = children.ne();
-                let mut sw = children.sw();
-                let mut se = children.se();
+                let data = &self[id];
+                let mut nw = data.nw();
+                let mut ne = data.ne();
+                let mut sw = data.sw();
+                let mut se = data.se();
                 match (x.is_negative(), y.is_negative()) {
                     (true, true) => nw = self.set_cell_node(nw, x + offset, y + offset, state),
                     (false, true) => ne = self.set_cell_node(ne, x - offset, y + offset, state),
@@ -366,13 +366,13 @@ impl World {
         }
     }
 
-    fn step_node(&mut self, node: Node, step: u8) -> Node {
+    fn step_node(&mut self, node: Node) -> Node {
         match node {
             Node::Leaf(leaf) => {
-                debug_assert!(step == 0);
+                debug_assert!(self.step == 0);
                 Node::Leaf(self.step_leaf(leaf))
             }
-            Node::NodeId(id) => self.step_id(id, step),
+            Node::NodeId(id) => self.step_id(id),
         }
     }
 
@@ -380,30 +380,26 @@ impl World {
         self.rule.rule_table[leaf as usize] as u16
     }
 
-    fn step_id(&mut self, id: NodeId, step: u8) -> Node {
+    fn step_id(&mut self, id: NodeId) -> Node {
         let data = &self[id];
         debug_assert!(
-            1 + step < data.level,
+            1 + self.step < data.level,
             "A level {} node cannot evolve for 2.pow({}) steps.",
             data.level,
-            step
+            self.step
         );
-        if step == self.step {
-            if let Some(node) = data.cache_step {
-                return node;
-            }
+        if let Some(node) = data.cache_step {
+            return node;
         }
-        let node = if step + 2 == data.level {
+        let node = if self.step + 2 == data.level {
             self.step_max_id(id)
         } else {
             match data.children {
-                QuadChildren::Leaf { nw, ne, sw, se } => self.step_quad_leaf(nw, ne, sw, se, 0),
-                QuadChildren::NodeId { nw, ne, sw, se } => self.step_quad(nw, ne, sw, se, step),
+                QuadChildren::Leaf { nw, ne, sw, se } => self.step_quad_leaf(nw, ne, sw, se, false),
+                QuadChildren::NodeId { nw, ne, sw, se } => self.step_quad(nw, ne, sw, se, false),
             }
         };
-        if step == self.step {
-            self[id].cache_step = Some(node);
-        }
+        self[id].cache_step = Some(node);
         node
     }
 
@@ -413,8 +409,10 @@ impl World {
             Some(node) => node,
             None => {
                 let node = match data.children {
-                    QuadChildren::Leaf { nw, ne, sw, se } => self.step_quad_leaf(nw, ne, sw, se, 1),
-                    QuadChildren::NodeId { nw, ne, sw, se } => self.step_max_quad(nw, ne, sw, se),
+                    QuadChildren::Leaf { nw, ne, sw, se } => {
+                        self.step_quad_leaf(nw, ne, sw, se, true)
+                    }
+                    QuadChildren::NodeId { nw, ne, sw, se } => self.step_quad(nw, ne, sw, se, true),
                 };
                 self[id].cache_step_max = Some(node);
                 node
@@ -422,12 +420,7 @@ impl World {
         }
     }
 
-    fn step_quad_leaf(&self, nw: Leaf, ne: Leaf, sw: Leaf, se: Leaf, step: u8) -> Node {
-        debug_assert!(
-            step < 2,
-            "A level 3 node cannot evolve for 2.pow({}) steps.",
-            step
-        );
+    fn step_quad_leaf(&self, nw: Leaf, ne: Leaf, sw: Leaf, se: Leaf, max: bool) -> Node {
         let t00 = self.step_leaf(nw);
         let t01 = self.step_leaf((nw & 0x3333) << 2 | (ne & 0xcccc) >> 2);
         let t02 = self.step_leaf(ne);
@@ -439,7 +432,13 @@ impl World {
         let t20 = self.step_leaf(sw);
         let t21 = self.step_leaf((sw & 0x3333) << 2 | (se & 0xcccc) >> 2);
         let t22 = self.step_leaf(se);
-        if step == 0 {
+        if max {
+            let new_nw = self.step_leaf(t00 << 10 | t01 << 8 | t10 << 2 | t11 << 0);
+            let new_ne = self.step_leaf(t01 << 10 | t02 << 8 | t11 << 2 | t12 << 0);
+            let new_sw = self.step_leaf(t10 << 10 | t11 << 8 | t20 << 2 | t21 << 0);
+            let new_se = self.step_leaf(t11 << 10 | t12 << 8 | t21 << 2 | t22 << 0);
+            Node::Leaf(new_nw << 10 | new_ne << 8 | new_sw << 2 | new_se << 0)
+        } else {
             Node::Leaf(
                 (t00 & 0x01) << 15
                     | (t01 & 0x03) << 13
@@ -451,182 +450,68 @@ impl World {
                     | (t21 & 0x30) >> 3
                     | (t22 & 0x20) >> 5,
             )
+        }
+    }
+
+    fn central_node(&mut self, id: NodeId) -> Node {
+        match self[id].children {
+            QuadChildren::Leaf { nw, ne, sw, se } => Node::Leaf(
+                (nw & 0x0033) << 10 | (ne & 0x00cc) << 6 | (sw & 0x3300) >> 6 | (se & 0xcc00) >> 10,
+            ),
+            QuadChildren::NodeId { nw, ne, sw, se } => {
+                let new_nw = self[nw].se();
+                let new_ne = self[ne].sw();
+                let new_sw = self[sw].ne();
+                let new_se = self[se].nw();
+                Node::NodeId(self.find_node(new_nw, new_ne, new_sw, new_se))
+            }
+        }
+    }
+
+    fn step_quad(&mut self, nw: NodeId, ne: NodeId, sw: NodeId, se: NodeId, max: bool) -> Node {
+        let n01 = self.find_node(self[nw].ne(), self[ne].nw(), self[nw].se(), self[ne].sw());
+        let n10 = self.find_node(self[nw].sw(), self[nw].se(), self[sw].nw(), self[sw].ne());
+        let n11 = self.find_node(self[nw].se(), self[ne].sw(), self[sw].ne(), self[se].nw());
+        let n12 = self.find_node(self[ne].sw(), self[ne].se(), self[se].nw(), self[se].ne());
+        let n21 = self.find_node(self[sw].ne(), self[se].nw(), self[sw].se(), self[se].sw());
+        let (t00, t01, t02, t10, t11, t12, t20, t21, t22);
+        if max {
+            t00 = self.step_max_id(nw);
+            t01 = self.step_max_id(n01);
+            t02 = self.step_max_id(ne);
+            t10 = self.step_max_id(n10);
+            t11 = self.step_max_id(n11);
+            t12 = self.step_max_id(n12);
+            t20 = self.step_max_id(sw);
+            t21 = self.step_max_id(n21);
+            t22 = self.step_max_id(se);
         } else {
-            let new_nw = self.step_leaf(t00 << 10 | t01 << 8 | t10 << 2 | t11 << 0);
-            let new_ne = self.step_leaf(t01 << 10 | t02 << 8 | t11 << 2 | t12 << 0);
-            let new_sw = self.step_leaf(t10 << 10 | t11 << 8 | t20 << 2 | t21 << 0);
-            let new_se = self.step_leaf(t11 << 10 | t12 << 8 | t21 << 2 | t22 << 0);
-            Node::Leaf(new_nw << 10 | new_ne << 8 | new_sw << 2 | new_se << 0)
+            t00 = self.central_node(nw);
+            t01 = self.central_node(n01);
+            t02 = self.central_node(ne);
+            t10 = self.central_node(n10);
+            t11 = self.central_node(n11);
+            t12 = self.central_node(n12);
+            t20 = self.central_node(sw);
+            t21 = self.central_node(n21);
+            t22 = self.central_node(se);
         }
-    }
-
-    fn step_quad(&mut self, nw: NodeId, ne: NodeId, sw: NodeId, se: NodeId, step: u8) -> Node {
-        let n01 = self.find_node(
-            self[nw].children.ne(),
-            self[ne].children.nw(),
-            self[nw].children.se(),
-            self[ne].children.sw(),
-        );
-        let n10 = self.find_node(
-            self[nw].children.sw(),
-            self[nw].children.se(),
-            self[sw].children.nw(),
-            self[sw].children.ne(),
-        );
-        let n11 = self.find_node(
-            self[nw].children.se(),
-            self[ne].children.sw(),
-            self[sw].children.ne(),
-            self[se].children.nw(),
-        );
-        let n12 = self.find_node(
-            self[ne].children.sw(),
-            self[ne].children.se(),
-            self[se].children.nw(),
-            self[se].children.ne(),
-        );
-        let n21 = self.find_node(
-            self[sw].children.ne(),
-            self[se].children.nw(),
-            self[sw].children.se(),
-            self[se].children.sw(),
-        );
-        let t00 = self.step_id(nw, step);
-        let t01 = self.step_id(n01, step);
-        let t02 = self.step_id(ne, step);
-        let t10 = self.step_id(n10, step);
-        let t11 = self.step_id(n11, step);
-        let t12 = self.step_id(n12, step);
-        let t20 = self.step_id(sw, step);
-        let t21 = self.step_id(n21, step);
-        let t22 = self.step_id(se, step);
-        match (t00, t01, t02, t10, t11, t12, t20, t21, t22) {
-            (
-                Node::Leaf(t00),
-                Node::Leaf(t01),
-                Node::Leaf(t02),
-                Node::Leaf(t10),
-                Node::Leaf(t11),
-                Node::Leaf(t12),
-                Node::Leaf(t20),
-                Node::Leaf(t21),
-                Node::Leaf(t22),
-            ) => {
-                let new_nw = Node::Leaf(
-                    (t00 & 0x0033) << 10
-                        | (t01 & 0x00cc) << 6
-                        | (t10 & 0x3300) >> 6
-                        | (t11 & 0xcc00) >> 10,
-                );
-                let new_ne = Node::Leaf(
-                    (t01 & 0x0033) << 10
-                        | (t02 & 0x00cc) << 6
-                        | (t11 & 0x3300) >> 6
-                        | (t12 & 0xcc00) >> 10,
-                );
-                let new_sw = Node::Leaf(
-                    (t10 & 0x0033) << 10
-                        | (t11 & 0x00cc) << 6
-                        | (t20 & 0x3300) >> 6
-                        | (t21 & 0xcc00) >> 10,
-                );
-                let new_se = Node::Leaf(
-                    (t11 & 0x0033) << 10
-                        | (t12 & 0x00cc) << 6
-                        | (t21 & 0x3300) >> 6
-                        | (t22 & 0xcc00) >> 10,
-                );
-                Node::NodeId(self.find_node(new_nw, new_ne, new_sw, new_se))
-            }
-            (
-                Node::NodeId(t00),
-                Node::NodeId(t01),
-                Node::NodeId(t02),
-                Node::NodeId(t10),
-                Node::NodeId(t11),
-                Node::NodeId(t12),
-                Node::NodeId(t20),
-                Node::NodeId(t21),
-                Node::NodeId(t22),
-            ) => {
-                let new_nw = Node::NodeId(self.find_node(
-                    self[t00].children.se(),
-                    self[t01].children.sw(),
-                    self[t10].children.ne(),
-                    self[t11].children.nw(),
-                ));
-                let new_ne = Node::NodeId(self.find_node(
-                    self[t01].children.se(),
-                    self[t02].children.sw(),
-                    self[t11].children.ne(),
-                    self[t12].children.nw(),
-                ));
-                let new_sw = Node::NodeId(self.find_node(
-                    self[t10].children.se(),
-                    self[t11].children.sw(),
-                    self[t20].children.ne(),
-                    self[t21].children.nw(),
-                ));
-                let new_se = Node::NodeId(self.find_node(
-                    self[t11].children.se(),
-                    self[t12].children.sw(),
-                    self[t21].children.ne(),
-                    self[t22].children.nw(),
-                ));
-                Node::NodeId(self.find_node(new_nw, new_ne, new_sw, new_se))
-            }
-            _ => unreachable!("All children must have the same level."),
-        }
-    }
-
-    fn step_max_quad(&mut self, nw: NodeId, ne: NodeId, sw: NodeId, se: NodeId) -> Node {
-        let n01 = self.find_node(
-            self[nw].children.ne(),
-            self[ne].children.nw(),
-            self[nw].children.se(),
-            self[ne].children.sw(),
-        );
-        let n10 = self.find_node(
-            self[nw].children.sw(),
-            self[nw].children.se(),
-            self[sw].children.nw(),
-            self[sw].children.ne(),
-        );
-        let n11 = self.find_node(
-            self[nw].children.se(),
-            self[ne].children.sw(),
-            self[sw].children.ne(),
-            self[se].children.nw(),
-        );
-        let n12 = self.find_node(
-            self[ne].children.sw(),
-            self[ne].children.se(),
-            self[se].children.nw(),
-            self[se].children.ne(),
-        );
-        let n21 = self.find_node(
-            self[sw].children.ne(),
-            self[se].children.nw(),
-            self[sw].children.se(),
-            self[se].children.sw(),
-        );
-        let t00 = self.step_max_id(nw);
-        let t01 = self.step_max_id(n01);
-        let t02 = self.step_max_id(ne);
-        let t10 = self.step_max_id(n10);
-        let t11 = self.step_max_id(n11);
-        let t12 = self.step_max_id(n12);
-        let t20 = self.step_max_id(sw);
-        let t21 = self.step_max_id(n21);
-        let t22 = self.step_max_id(se);
         let pre_new_nw = self.find_node(t00, t01, t10, t11);
         let pre_new_ne = self.find_node(t01, t02, t11, t12);
         let pre_new_sw = self.find_node(t10, t11, t20, t21);
         let pre_new_se = self.find_node(t11, t12, t21, t22);
-        let new_nw = self.step_max_id(pre_new_nw);
-        let new_ne = self.step_max_id(pre_new_ne);
-        let new_sw = self.step_max_id(pre_new_sw);
-        let new_se = self.step_max_id(pre_new_se);
+        let (new_nw, new_ne, new_sw, new_se);
+        if max {
+            new_nw = self.step_max_id(pre_new_nw);
+            new_ne = self.step_max_id(pre_new_ne);
+            new_sw = self.step_max_id(pre_new_sw);
+            new_se = self.step_max_id(pre_new_se);
+        } else {
+            new_nw = self.step_id(pre_new_nw);
+            new_ne = self.step_id(pre_new_ne);
+            new_sw = self.step_id(pre_new_sw);
+            new_se = self.step_id(pre_new_se);
+        }
         Node::NodeId(self.find_node(new_nw, new_ne, new_sw, new_se))
     }
 }
@@ -656,9 +541,9 @@ mod tests {
         let world = World::default();
         macro_rules! test_level_3 {
             ($nw:expr, $ne:expr, $sw:expr, $se:expr, $result1:expr, $result2:expr $(,)?) => {{
-                let result1 = world.step_quad_leaf($nw, $ne, $sw, $se, 0);
+                let result1 = world.step_quad_leaf($nw, $ne, $sw, $se, false);
                 assert_eq!(result1, Node::Leaf($result1));
-                let result2 = world.step_quad_leaf($nw, $ne, $sw, $se, 1);
+                let result2 = world.step_quad_leaf($nw, $ne, $sw, $se, true);
                 assert_eq!(result2, Node::Leaf($result2));
             }};
         }
