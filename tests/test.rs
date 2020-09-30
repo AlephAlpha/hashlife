@@ -2,7 +2,7 @@ use ca_formats::rle::RLE;
 use hashlife::World;
 
 fn run_pattern(pattern: &str, rule_string: &str, step_log2: u8) -> u64 {
-    let mut world = World::new(rule_string.parse().unwrap(), step_log2);
+    let mut world = World::new_with_step(rule_string.parse().unwrap(), step_log2);
     for cell in RLE::new(pattern) {
         let (x, y) = cell.unwrap();
         world.set_cell(x as i64, y as i64, true);

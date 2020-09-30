@@ -103,8 +103,18 @@ impl IndexMut<NodeId> for World {
     }
 }
 
+impl Default for World {
+    fn default() -> Self {
+        World::new("B3/S23".parse().unwrap())
+    }
+}
+
 impl World {
-    pub fn new(rule: Rule, step: u8) -> Self {
+    pub fn new(rule: Rule) -> Self {
+        Self::new_with_step(rule, 0)
+    }
+
+    pub fn new_with_step(rule: Rule, step: u8) -> Self {
         let hash_table = FxHashMap::default();
         let node_data = Vec::new();
         let empty_nodes = Vec::new();
@@ -136,7 +146,7 @@ impl World {
         self.get_cell_node(self.root, x, y)
     }
 
-    pub fn set_cell(&mut self, x: i64, y: i64, state: bool) {
+    pub fn set_cell(&mut self, x: i64, y: i64, state: bool) -> &mut Self {
         while {
             let offset = 1 << (self.node_level(self.root) - 2);
             x >= 2 * offset || x < -2 * offset || y >= 2 * offset || y < -2 * offset
@@ -144,23 +154,26 @@ impl World {
             self.expand();
         }
         self.root = self.set_cell_node(self.root, x, y, state);
+        self
     }
 
     pub fn get_step(&self) -> u8 {
         self.step
     }
 
-    pub fn set_step(&mut self, step: u8) {
+    pub fn set_step(&mut self, step: u8) -> &mut Self {
         self.clear_cache();
         self.step = step;
+        self
     }
 
     pub fn get_generation(&self) -> u64 {
         self.generation
     }
 
-    pub fn set_generation(&mut self, generation: u64) {
+    pub fn set_generation(&mut self, generation: u64) -> &mut Self {
         self.generation = generation;
+        self
     }
 
     pub fn clear(&mut self, clear_nodes: bool) {
@@ -624,7 +637,7 @@ mod tests {
 
     #[test]
     fn test_leaf() {
-        let world = World::new("B3/S23".parse().unwrap(), 0);
+        let world = World::default();
         macro_rules! test_leaf {
             ($leaf:expr, $result:expr $(,)?) => {{
                 let result = world.step_leaf($leaf);
@@ -640,7 +653,7 @@ mod tests {
 
     #[test]
     fn test_level_3() {
-        let world = World::new("B3/S23".parse().unwrap(), 0);
+        let world = World::default();
         macro_rules! test_level_3 {
             ($nw:expr, $ne:expr, $sw:expr, $se:expr, $result1:expr, $result2:expr $(,)?) => {{
                 let result1 = world.step_quad_leaf($nw, $ne, $sw, $se, 0);
@@ -677,29 +690,33 @@ mod tests {
 
     #[test]
     fn test_step_1() {
-        let mut world = World::new("B3/S23".parse().unwrap(), 0);
+        let mut world = World::default();
         world.root = Node::Leaf(0b_0000_0011_0110_0010);
-        let populations = [5, 6, 7, 9, 8, 9, 12, 11, 18];
+        assert_eq!(world.population(), 5);
+        let populations = [6, 7, 9, 8, 9, 12, 11, 18];
         for &n in populations.iter() {
-            assert_eq!(world.population(), n);
             world.step();
+            assert_eq!(world.population(), n);
         }
     }
 
     #[test]
     fn test_step_256() {
-        let mut world = World::new("B3/S23".parse().unwrap(), 8);
+        let mut world = World::default();
+        world.set_step(8);
         world.root = Node::Leaf(0b_0000_0011_0110_0010);
-        let populations = [5, 141, 188, 204, 162, 116, 116, 116, 116];
+        assert_eq!(world.population(), 5);
+        let populations = [141, 188, 204, 162, 116, 116, 116, 116];
         for &n in populations.iter() {
-            assert_eq!(world.population(), n);
             world.step();
+            assert_eq!(world.population(), n);
         }
     }
 
     #[test]
     fn test_get_cell() {
-        let mut world = World::new("B3/S23".parse().unwrap(), 8);
+        let mut world = World::default();
+        world.set_step(8);
         world.root = Node::Leaf(0b_0000_0011_0110_0010);
         assert_eq!(world.get_cell(-10, -10), false);
         assert_eq!(world.get_cell(-2, -2), false);
@@ -713,7 +730,8 @@ mod tests {
 
     #[test]
     fn test_set_cell() {
-        let mut world = World::new("B3/S23".parse().unwrap(), 8);
+        let mut world = World::default();
+        world.set_step(8);
         let cells = vec![(0, -1), (1, -1), (-1, 0), (0, 0), (0, 1)];
         for (x, y) in cells {
             world.set_cell(x, y, true);
@@ -725,5 +743,33 @@ mod tests {
         assert_eq!(world.population(), 140);
         world.step();
         assert_eq!(world.population(), 97);
+    }
+
+    #[test]
+    fn test_set_step() {
+        let mut world = World::default();
+        world.root = Node::Leaf(0b_0000_0011_0110_0010);
+        assert_eq!(world.population(), 5);
+        assert_eq!(world.get_generation(), 0);
+        let populations = [6, 7, 9, 8, 9, 12, 11, 18];
+        for &n in populations.iter() {
+            world.step();
+            assert_eq!(world.population(), n);
+        }
+        assert_eq!(world.get_generation(), 8);
+        world.set_step(3);
+        let populations = [23, 46, 32, 33, 45, 66, 69, 65];
+        for &n in populations.iter() {
+            world.step();
+            assert_eq!(world.population(), n);
+        }
+        assert_eq!(world.get_generation(), 72);
+        world.set_step(0);
+        let populations = [70, 71, 73, 65, 69, 77, 75, 67];
+        for &n in populations.iter() {
+            world.step();
+            assert_eq!(world.population(), n);
+        }
+        assert_eq!(world.get_generation(), 80);
     }
 }
