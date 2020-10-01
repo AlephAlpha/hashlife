@@ -3,7 +3,7 @@ use rustc_hash::FxHashMap;
 use std::ops::{Index, IndexMut};
 
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
-struct NodeId(usize);
+struct NodeId(u32);
 type Leaf = u16;
 
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
@@ -95,13 +95,13 @@ impl Index<NodeId> for World {
     type Output = NodeData;
 
     fn index(&self, id: NodeId) -> &Self::Output {
-        &self.node_data[id.0]
+        &self.node_data[id.0 as usize]
     }
 }
 
 impl IndexMut<NodeId> for World {
     fn index_mut(&mut self, id: NodeId) -> &mut Self::Output {
-        &mut self.node_data[id.0]
+        &mut self.node_data[id.0 as usize]
     }
 }
 
@@ -266,7 +266,7 @@ impl World {
     fn find_node(&mut self, nw: Node, ne: Node, sw: Node, se: Node) -> NodeId {
         let children = QuadChildren::new(nw, ne, sw, se);
         self.hash_table.get(&children).copied().unwrap_or_else(|| {
-            let new_id = NodeId(self.node_data.len());
+            let new_id = NodeId(self.node_data.len() as u32);
             let level = self.children_level(children) + 1;
             let population = self.children_population(children);
             self.hash_table.insert(children, new_id);
