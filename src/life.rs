@@ -81,6 +81,7 @@ impl NodeData {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct World {
     rule: Rule,
     generation: u64,
@@ -188,6 +189,15 @@ impl World {
         }
         self.generation = 0;
         self.root = Node::Leaf(0);
+    }
+
+    // Bound: (left, right, top, bottom).
+    pub fn for_living_cells<F>(&self, bound: (i64, i64, i64, i64), f: F)
+    where
+        F: FnMut(i64, i64),
+    {
+        let mut f = f;
+        self.for_living_cells_node(self.root, bound, (0, 0), &mut f)
     }
 
     fn empty_node(&mut self, level: u8) -> Node {
@@ -320,25 +330,28 @@ impl World {
     }
 
     fn get_cell_node(&self, node: Node, x: i64, y: i64) -> bool {
-        let offset = 1 << (self.node_level(node) - 2);
-        if x >= 2 * offset || x < -2 * offset || y >= 2 * offset || y < -2 * offset {
+        if self.node_population(node) == 0 {
+            return false;
+        }
+        let node_size = 1 << (self.node_level(node) - 2);
+        if x >= 2 * node_size || x < -2 * node_size || y >= 2 * node_size || y < -2 * node_size {
             return false;
         }
         match node {
             Node::Leaf(leaf) => leaf & 1 << ((1 - y) * 4 + (1 - x)) != 0,
             Node::NodeId(id) => match (x.is_negative(), y.is_negative()) {
-                (true, true) => self.get_cell_node(self[id].nw(), x + offset, y + offset),
-                (false, true) => self.get_cell_node(self[id].ne(), x - offset, y + offset),
-                (true, false) => self.get_cell_node(self[id].sw(), x + offset, y - offset),
-                (false, false) => self.get_cell_node(self[id].se(), x - offset, y - offset),
+                (true, true) => self.get_cell_node(self[id].nw(), x + node_size, y + node_size),
+                (false, true) => self.get_cell_node(self[id].ne(), x - node_size, y + node_size),
+                (true, false) => self.get_cell_node(self[id].sw(), x + node_size, y - node_size),
+                (false, false) => self.get_cell_node(self[id].se(), x - node_size, y - node_size),
             },
         }
     }
 
     fn set_cell_node(&mut self, node: Node, x: i64, y: i64, state: bool) -> Node {
-        let offset = 1 << (self.node_level(node) - 2);
+        let node_size = 1 << (self.node_level(node) - 2);
         debug_assert!(
-            x < 2 * offset && x >= -2 * offset && y < 2 * offset && y >= -2 * offset,
+            x < 2 * node_size && x >= -2 * node_size && y < 2 * node_size && y >= -2 * node_size,
             "Cannot set cell outside of the node."
         );
         match node {
@@ -356,12 +369,88 @@ impl World {
                 let mut sw = data.sw();
                 let mut se = data.se();
                 match (x.is_negative(), y.is_negative()) {
-                    (true, true) => nw = self.set_cell_node(nw, x + offset, y + offset, state),
-                    (false, true) => ne = self.set_cell_node(ne, x - offset, y + offset, state),
-                    (true, false) => sw = self.set_cell_node(sw, x + offset, y - offset, state),
-                    (false, false) => se = self.set_cell_node(se, x - offset, y - offset, state),
+                    (true, true) => {
+                        nw = self.set_cell_node(nw, x + node_size, y + node_size, state)
+                    }
+                    (false, true) => {
+                        ne = self.set_cell_node(ne, x - node_size, y + node_size, state)
+                    }
+                    (true, false) => {
+                        sw = self.set_cell_node(sw, x + node_size, y - node_size, state)
+                    }
+                    (false, false) => {
+                        se = self.set_cell_node(se, x - node_size, y - node_size, state)
+                    }
                 }
                 Node::NodeId(self.find_node(nw, ne, sw, se))
+            }
+        }
+    }
+
+    fn for_living_cells_node<F>(
+        &self,
+        node: Node,
+        bound: (i64, i64, i64, i64),
+        offset: (i64, i64),
+        f: &mut F,
+    ) where
+        F: FnMut(i64, i64),
+    {
+        if self.node_population(node) != 0 {
+            let node_size = 1 << (self.node_level(node) - 2);
+            let (left, right, top, bottom) = bound;
+            if left < 2 * node_size
+                && right > -2 * node_size
+                && top < 2 * node_size
+                && bottom > -2 * node_size
+            {
+                match node {
+                    Node::Leaf(leaf) => {
+                        let left = left.max(-2);
+                        let right = right.min(2);
+                        let top = top.max(-2);
+                        let bottom = bottom.min(2);
+                        for x in left..right {
+                            for y in top..bottom {
+                                if leaf & 1 << ((1 - y) * 4 + (1 - x)) != 0 {
+                                    f(x + offset.0, y + offset.1);
+                                }
+                            }
+                        }
+                    }
+                    Node::NodeId(id) => {
+                        let data = &self[id];
+                        self.for_living_cells_node(
+                            data.nw(),
+                            (left + node_size, node_size, top + node_size, node_size),
+                            (offset.0 - node_size, offset.1 - node_size),
+                            f,
+                        );
+                        self.for_living_cells_node(
+                            data.ne(),
+                            (-node_size, right - node_size, top + node_size, node_size),
+                            (offset.0 + node_size, offset.1 - node_size),
+                            f,
+                        );
+                        self.for_living_cells_node(
+                            data.sw(),
+                            (left + node_size, node_size, -node_size, bottom - node_size),
+                            (offset.0 - node_size, offset.1 + node_size),
+                            f,
+                        );
+                        self.for_living_cells_node(
+                            data.se(),
+                            (
+                                -node_size,
+                                right - node_size,
+                                -node_size,
+                                bottom - node_size,
+                            ),
+                            (offset.0 + node_size, offset.1 + node_size),
+                            f,
+                        );
+                    }
+                }
             }
         }
     }
@@ -656,5 +745,18 @@ mod tests {
             assert_eq!(world.population(), n);
         }
         assert_eq!(world.get_generation(), 80);
+    }
+
+    #[test]
+    fn test_for_living_cells() {
+        let mut world = World::default();
+        world.root = Node::Leaf(0b_0000_0011_0110_0010);
+        world.step();
+        let mut cells = Vec::new();
+        world.for_living_cells((-2, 2, -2, 2), |x, y| cells.push((x, y)));
+        assert_eq!(
+            cells,
+            vec![(-1, -1), (0, -1), (1, -1), (-1, 0), (-1, 1), (0, 1)]
+        );
     }
 }

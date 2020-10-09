@@ -1,5 +1,8 @@
 use ca_rules::{ParseNtLife, ParseRuleError};
-use std::str::FromStr;
+use std::{
+    fmt::{Debug, Formatter, Result as DebugResult},
+    str::FromStr,
+};
 
 struct Rule3x3 {
     rule_table: [bool; 1 << 9],
@@ -22,8 +25,17 @@ impl ParseNtLife for Rule3x3 {
     }
 }
 
+#[derive(Clone)]
 pub struct Rule {
     pub rule_table: [u8; 1 << 16],
+}
+
+impl Debug for Rule {
+    fn fmt(&self, f: &mut Formatter<'_>) -> DebugResult {
+        f.debug_struct("Rule")
+            .field("rule_table", &self.rule_table.to_vec())
+            .finish()
+    }
 }
 
 impl From<Rule3x3> for Rule {
