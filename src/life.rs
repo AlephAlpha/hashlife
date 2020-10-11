@@ -399,51 +399,68 @@ impl World {
         if self.node_population(node) != 0 {
             let node_size = 1 << (self.node_level(node) - 2);
             let (left, right, top, bottom) = bound;
-            if left < 2 * node_size
-                && right > -2 * node_size
-                && top < 2 * node_size
-                && bottom > -2 * node_size
-            {
-                match node {
-                    Node::Leaf(leaf) => {
-                        let left = left.max(-2);
-                        let right = right.min(2);
-                        let top = top.max(-2);
-                        let bottom = bottom.min(2);
-                        for x in left..right {
-                            for y in top..bottom {
-                                if leaf & 1 << ((1 - y) * 4 + (1 - x)) != 0 {
-                                    f(x + offset.0, y + offset.1);
-                                }
+            match node {
+                Node::Leaf(leaf) => {
+                    let left = left.max(-2);
+                    let right = right.min(2);
+                    let top = top.max(-2);
+                    let bottom = bottom.min(2);
+                    for x in left..right {
+                        for y in top..bottom {
+                            if leaf & 1 << ((1 - y) * 4 + (1 - x)) != 0 {
+                                f(x + offset.0, y + offset.1);
                             }
                         }
                     }
-                    Node::NodeId(id) => {
-                        let data = &self[id];
+                }
+                Node::NodeId(id) => {
+                    let data = &self[id];
+                    if left < 0 && top < 0 {
                         self.for_living_cells_node(
                             data.nw(),
-                            (left + node_size, node_size, top + node_size, node_size),
+                            (
+                                left + node_size,
+                                right.min(0) + node_size,
+                                top + node_size,
+                                bottom.min(0) + node_size,
+                            ),
                             (offset.0 - node_size, offset.1 - node_size),
                             f,
                         );
+                    }
+                    if right > 0 && top < 0 {
                         self.for_living_cells_node(
                             data.ne(),
-                            (-node_size, right - node_size, top + node_size, node_size),
+                            (
+                                left.max(0) - node_size,
+                                right - node_size,
+                                top + node_size,
+                                bottom.min(0) + node_size,
+                            ),
                             (offset.0 + node_size, offset.1 - node_size),
                             f,
                         );
+                    }
+                    if left < 0 && bottom > 0 {
                         self.for_living_cells_node(
                             data.sw(),
-                            (left + node_size, node_size, -node_size, bottom - node_size),
+                            (
+                                left + node_size,
+                                right.min(0) + node_size,
+                                top.max(0) - node_size,
+                                bottom - node_size,
+                            ),
                             (offset.0 - node_size, offset.1 + node_size),
                             f,
                         );
+                    }
+                    if right > 0 && bottom > 0 {
                         self.for_living_cells_node(
                             data.se(),
                             (
-                                -node_size,
+                                left.max(0) - node_size,
                                 right - node_size,
-                                -node_size,
+                                top.max(0) - node_size,
                                 bottom - node_size,
                             ),
                             (offset.0 + node_size, offset.1 + node_size),
