@@ -35,16 +35,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut is_running = false;
     let mut need_update = true;
 
-    let mut width = canvas.viewport().width() as i32;
-    let mut height = canvas.viewport().height() as i32;
+    let mut width = canvas.viewport().width() as i64;
+    let mut height = canvas.viewport().height() as i64;
     let mut left = -width / 2;
     let mut top = -height / 2;
+    let mut scale = 0;
 
     let mut now = Instant::now();
     const FRAME_TIME: Duration = Duration::from_nanos(1_000_000_000 / 60);
 
     'mainloop: loop {
-        for event in sdl.event_pump()?.poll_iter() {
+        let mut events = sdl.event_pump()?;
+        let mouse_state = events.mouse_state();
+        let (mouse_x, mouse_y) = (mouse_state.x() as i64, mouse_state.y() as i64);
+
+        for event in events.poll_iter() {
             match event {
                 Event::Quit { .. }
                 | Event::KeyDown {
@@ -55,10 +60,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                     win_event: WindowEvent::SizeChanged(x, y),
                     ..
                 } => {
-                    left -= x / 2 - width / 2;
-                    top -= y / 2 - height / 2;
-                    width = x;
-                    height = y;
+                    left -= x as i64 / 2 - width / 2;
+                    top -= y as i64 / 2 - height / 2;
+                    width = x as i64;
+                    height = y as i64;
                     need_update = true;
                 }
                 Event::KeyDown {
@@ -148,10 +153,22 @@ fn main() -> Result<(), Box<dyn Error>> {
                     ..
                 } => {
                     if mousestate.left() {
-                        left -= xrel;
-                        top -= yrel;
+                        left -= xrel as i64;
+                        top -= yrel as i64;
                         need_update = true;
                     }
+                }
+                Event::MouseWheel { y, .. } => {
+                    let new_scale = (scale as i32 - y).max(0).min(0xff) as u8;
+                    if new_scale > scale {
+                        left = ((left + mouse_x) >> (new_scale - scale)) - mouse_x;
+                        top = ((top + mouse_y) >> (new_scale - scale)) - mouse_y;
+                    } else {
+                        left = ((left + mouse_x) << (scale - new_scale)) - mouse_x;
+                        top = ((top + mouse_y) << (scale - new_scale)) - mouse_y;
+                    }
+                    scale = new_scale;
+                    need_update = true;
                 }
                 _ => {}
             }
@@ -159,7 +176,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         if is_running {
             world.step();
-            need_update = is_running;
+            need_update = true;
         }
 
         if need_update {
@@ -167,7 +184,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             canvas.clear();
             canvas.set_draw_color(Color::WHITE);
 
-            world.for_living_cells(
+            world.for_nodes(
+                scale,
                 (
                     left as i64,
                     (left + width) as i64,
@@ -176,7 +194,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 ),
                 |x, y| {
                     canvas
-                        .draw_point((x as i32 - left, y as i32 - top))
+                        .draw_point(((x - left) as i32, (y - top) as i32))
                         .unwrap();
                 },
             );
@@ -192,11 +210,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         eprintln!(
-            "{}\tGen: {:?}\tStep: {:?}\tPop: {:?}\tFps: {:?}",
+            "{}\tGen: {:?}\tStep: 2^{:?}\tPop: {:?}\tScale: 1:2^{:?}\tFps: {:?}",
             if is_running { "Running" } else { "Paused" },
             world.get_generation(),
-            1 << world.get_step(),
+            world.get_step(),
             world.population(),
+            scale,
             1.0 / now.elapsed().as_secs_f32(),
         );
 

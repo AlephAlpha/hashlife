@@ -2,7 +2,8 @@
 
 * `Enter`: Start / stop running
 * `Space`: Next step
-* `W` `A` `S` `D` / Arrow keys / Mouse drag: Move
 * `+` / `=`: Faster
 * `-`: Slower
+* `W` `A` `S` `D` / Arrow keys / Mouse drag: Move
+* Mouse wheel: Zoom in / out
 * `Esc`: Quit
