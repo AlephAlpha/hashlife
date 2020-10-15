@@ -52,7 +52,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     ..
                 } => break 'mainloop,
                 Event::Window {
-                    win_event: WindowEvent::Resized(x, y),
+                    win_event: WindowEvent::SizeChanged(x, y),
                     ..
                 } => {
                     left -= x / 2 - width / 2;
@@ -139,6 +139,18 @@ fn main() -> Result<(), Box<dyn Error>> {
                     let step = world.get_step();
                     if step > 0 {
                         world.set_step(step - 1);
+                    }
+                }
+                Event::MouseMotion {
+                    xrel,
+                    yrel,
+                    mousestate,
+                    ..
+                } => {
+                    if mousestate.left() {
+                        left -= xrel;
+                        top -= yrel;
+                        need_update = true;
                     }
                 }
                 _ => {}
