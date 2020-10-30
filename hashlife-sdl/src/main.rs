@@ -1,5 +1,6 @@
-use ca_formats::rle::RLE;
+use ca_formats::rle::Rle;
 use hashlife::World;
+use rand::random;
 use sdl2::{
     self,
     event::{Event, WindowEvent},
@@ -7,17 +8,36 @@ use sdl2::{
     pixels::Color,
 };
 use std::{
+    env::args,
     error::Error,
+    fs::File,
     thread::sleep,
     time::{Duration, Instant},
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let pattern = RLE::new(include_str!("../../../patterns/c4-diag-switch-engines.rle"));
-    let mut world = World::default();
-    for cell in pattern {
-        let (y, x) = cell.unwrap();
-        world.set_cell(x as i64, y as i64, true);
+    let mut world;
+    let arg = args().skip(1).next();
+    if let Some(arg) = arg {
+        let file = File::open(arg)?;
+        let pattern = Rle::new_from_file(file)?;
+        let rule = pattern
+            .header_data()
+            .and_then(|h| h.rule.as_deref())
+            .unwrap_or("B3/S23")
+            .parse()?;
+        world = World::new(rule);
+        for cell in pattern {
+            let (x, y) = cell?.position;
+            world.set_cell(x, y, true);
+        }
+    } else {
+        world = World::default();
+        for x in -256..256 {
+            for y in -256..256 {
+                world.set_cell(x, y, random());
+            }
+        }
     }
 
     let sdl = sdl2::init()?;

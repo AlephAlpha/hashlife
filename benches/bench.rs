@@ -1,13 +1,13 @@
-use ca_formats::rle::RLE;
+use ca_formats::rle::Rle;
 use criterion::{criterion_group, criterion_main, Criterion};
 use hashlife::World;
 use std::time::Duration;
 
 fn run_pattern(pattern: &str, rule_string: &str, step_log2: u8, steps: u32) {
     let mut world = World::new_with_step(rule_string.parse().unwrap(), step_log2);
-    for cell in RLE::new(pattern) {
-        let (x, y) = cell.unwrap();
-        world.set_cell(x as i64, y as i64, true);
+    for cell in Rle::new(pattern).unwrap() {
+        let (x, y) = cell.unwrap().position;
+        world.set_cell(x, y, true);
     }
     for _ in 0..steps {
         world.step();
