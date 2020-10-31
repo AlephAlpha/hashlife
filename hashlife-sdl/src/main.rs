@@ -1,4 +1,4 @@
-use ca_formats::rle::Rle;
+use ca_formats::{macrocell::Macrocell, rle::Rle};
 use hashlife::World;
 use rand::random;
 use sdl2::{
@@ -18,18 +18,14 @@ use std::{
 fn main() -> Result<(), Box<dyn Error>> {
     let mut world;
     let arg = args().skip(1).next();
-    if let Some(arg) = arg {
-        let file = File::open(arg)?;
-        let pattern = Rle::new_from_file(file)?;
-        let rule = pattern
-            .header_data()
-            .and_then(|h| h.rule.as_deref())
-            .unwrap_or("B3/S23")
-            .parse()?;
-        world = World::new(rule);
-        for cell in pattern {
-            let (x, y) = cell?.position;
-            world.set_cell(x, y, true);
+    if let Some(path) = arg {
+        let file = File::open(&path)?;
+        if path.ends_with(".mc") {
+            let macrocell = Macrocell::new_from_file(file)?;
+            world = World::from_macrocell(macrocell)?;
+        } else {
+            let rle = Rle::new_from_file(file)?;
+            world = World::from_rle(rle)?;
         }
     } else {
         world = World::default();

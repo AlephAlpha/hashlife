@@ -3,22 +3,22 @@ use rustc_hash::FxHashMap;
 use std::ops::{Index, IndexMut};
 
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
-struct NodeId(u32);
-type Leaf = u16;
+pub(crate) struct NodeId(u32);
+pub(crate) type Leaf = u16;
 
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
-enum Node {
-    Leaf(u16),
+pub(crate) enum Node {
+    Leaf(Leaf),
     NodeId(NodeId),
 }
 
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 enum QuadChildren {
     Leaf {
-        nw: u16,
-        ne: u16,
-        sw: u16,
-        se: u16,
+        nw: Leaf,
+        ne: Leaf,
+        sw: Leaf,
+        se: Leaf,
     },
     NodeId {
         nw: NodeId,
@@ -43,7 +43,7 @@ impl QuadChildren {
 }
 
 #[derive(Clone, Debug)]
-struct NodeData {
+pub(crate) struct NodeData {
     level: u8,
     population: u64,
     children: QuadChildren,
@@ -52,28 +52,28 @@ struct NodeData {
 }
 
 impl NodeData {
-    fn nw(&self) -> Node {
+    pub(crate) fn nw(&self) -> Node {
         match self.children {
             QuadChildren::NodeId { nw, .. } => Node::NodeId(nw),
             QuadChildren::Leaf { nw, .. } => Node::Leaf(nw),
         }
     }
 
-    fn ne(&self) -> Node {
+    pub(crate) fn ne(&self) -> Node {
         match self.children {
             QuadChildren::NodeId { ne, .. } => Node::NodeId(ne),
             QuadChildren::Leaf { ne, .. } => Node::Leaf(ne),
         }
     }
 
-    fn sw(&self) -> Node {
+    pub(crate) fn sw(&self) -> Node {
         match self.children {
             QuadChildren::NodeId { sw, .. } => Node::NodeId(sw),
             QuadChildren::Leaf { sw, .. } => Node::Leaf(sw),
         }
     }
 
-    fn se(&self) -> Node {
+    pub(crate) fn se(&self) -> Node {
         match self.children {
             QuadChildren::NodeId { se, .. } => Node::NodeId(se),
             QuadChildren::Leaf { se, .. } => Node::Leaf(se),
@@ -89,7 +89,7 @@ pub struct World {
     hash_table: FxHashMap<QuadChildren, NodeId>,
     node_data: Vec<NodeData>,
     empty_nodes: Vec<Node>,
-    root: Node,
+    pub(crate) root: Node,
 }
 
 impl Index<NodeId> for World {
@@ -191,24 +191,7 @@ impl World {
         self.root = Node::Leaf(0);
     }
 
-    // Bound: (left, right, top, bottom).
-    pub fn for_nodes<F>(&self, level: u8, bound: (i64, i64, i64, i64), f: F)
-    where
-        F: FnMut(i64, i64),
-    {
-        let mut f = f;
-        self.for_nodes_rec(self.root, level, bound, (0, 0), &mut f)
-    }
-
-    // Bound: (left, right, top, bottom).
-    pub fn for_living_cells<F>(&self, bound: (i64, i64, i64, i64), f: F)
-    where
-        F: FnMut(i64, i64),
-    {
-        self.for_nodes(0, bound, f)
-    }
-
-    fn empty_node(&mut self, level: u8) -> Node {
+    pub(crate) fn empty_node(&mut self, level: u8) -> Node {
         debug_assert!(level >= 2, "Level of a node must be >= 2");
         if self.empty_nodes.is_empty() {
             self.empty_nodes.push(Node::Leaf(0));
@@ -281,7 +264,7 @@ impl World {
         })
     }
 
-    fn find_node(&mut self, nw: Node, ne: Node, sw: Node, se: Node) -> NodeId {
+    pub(crate) fn find_node(&mut self, nw: Node, ne: Node, sw: Node, se: Node) -> NodeId {
         let children = QuadChildren::new(nw, ne, sw, se);
         self.hash_table.get(&children).copied().unwrap_or_else(|| {
             let new_id = NodeId(self.node_data.len() as u32);
@@ -299,7 +282,7 @@ impl World {
         })
     }
 
-    fn node_level(&self, node: Node) -> u8 {
+    pub(crate) fn node_level(&self, node: Node) -> u8 {
         match node {
             Node::Leaf(_) => 2,
             Node::NodeId(id) => self[id].level,
@@ -313,7 +296,7 @@ impl World {
         }
     }
 
-    fn node_population(&self, node: Node) -> u64 {
+    pub(crate) fn node_population(&self, node: Node) -> u64 {
         match node {
             Node::Leaf(leaf) => leaf.count_ones() as u64,
             Node::NodeId(id) => self[id].population,
@@ -393,159 +376,6 @@ impl World {
         }
     }
 
-    fn for_nodes_rec<F>(
-        &self,
-        node: Node,
-        level: u8,
-        bound: (i64, i64, i64, i64),
-        offset: (i64, i64),
-        f: &mut F,
-    ) where
-        F: FnMut(i64, i64),
-    {
-        if self.node_population(node) != 0 {
-            let node_level = self.node_level(node);
-            let (left, right, top, bottom) = bound;
-
-            if node_level <= level {
-                if left <= 0 && right > 0 && top <= 0 && bottom > 0 {
-                    f(offset.0, offset.1);
-                }
-            } else {
-                match node {
-                    Node::Leaf(leaf) => match level {
-                        0 => {
-                            let left = left.max(-2);
-                            let right = right.min(2);
-                            let top = top.max(-2);
-                            let bottom = bottom.min(2);
-                            for y in top..bottom {
-                                for x in left..right {
-                                    if leaf & 1 << ((1 - y) * 4 + (1 - x)) != 0 {
-                                        f(x + offset.0, y + offset.1);
-                                    }
-                                }
-                            }
-                        }
-                        1 => {
-                            let left = left.max(-1);
-                            let right = right.min(1);
-                            let top = top.max(-1);
-                            let bottom = bottom.min(1);
-                            for y in top..bottom {
-                                for x in left..right {
-                                    if leaf & 0x0033 << (-8 * y - 2 * x) != 0 {
-                                        f(x + offset.0, y + offset.1);
-                                    }
-                                }
-                            }
-                        }
-                        _ => unreachable!(),
-                    },
-                    Node::NodeId(id) => {
-                        let data = &self[id];
-                        if node_level >= level + 2 {
-                            let node_size = 1 << (node_level - level - 2);
-                            if left < 0 && top < 0 {
-                                self.for_nodes_rec(
-                                    data.nw(),
-                                    level,
-                                    (
-                                        left + node_size,
-                                        right.min(0) + node_size,
-                                        top + node_size,
-                                        bottom.min(0) + node_size,
-                                    ),
-                                    (offset.0 - node_size, offset.1 - node_size),
-                                    f,
-                                );
-                            }
-                            if right > 0 && top < 0 {
-                                self.for_nodes_rec(
-                                    data.ne(),
-                                    level,
-                                    (
-                                        left.max(0) - node_size,
-                                        right - node_size,
-                                        top + node_size,
-                                        bottom.min(0) + node_size,
-                                    ),
-                                    (offset.0 + node_size, offset.1 - node_size),
-                                    f,
-                                );
-                            }
-                            if left < 0 && bottom > 0 {
-                                self.for_nodes_rec(
-                                    data.sw(),
-                                    level,
-                                    (
-                                        left + node_size,
-                                        right.min(0) + node_size,
-                                        top.max(0) - node_size,
-                                        bottom - node_size,
-                                    ),
-                                    (offset.0 - node_size, offset.1 + node_size),
-                                    f,
-                                );
-                            }
-                            if right > 0 && bottom > 0 {
-                                self.for_nodes_rec(
-                                    data.se(),
-                                    level,
-                                    (
-                                        left.max(0) - node_size,
-                                        right - node_size,
-                                        top.max(0) - node_size,
-                                        bottom - node_size,
-                                    ),
-                                    (offset.0 + node_size, offset.1 + node_size),
-                                    f,
-                                );
-                            }
-                        } else {
-                            if left < 0 && top < 0 {
-                                self.for_nodes_rec(
-                                    data.nw(),
-                                    level,
-                                    (left + 1, right.min(0) + 1, top + 1, bottom.min(0) + 1),
-                                    (offset.0 - 1, offset.1 - 1),
-                                    f,
-                                );
-                            }
-                            if right > 0 && top < 0 {
-                                self.for_nodes_rec(
-                                    data.ne(),
-                                    level,
-                                    (left.max(0), right, top + 1, bottom.min(0) + 1),
-                                    (offset.0, offset.1 - 1),
-                                    f,
-                                );
-                            }
-                            if left < 0 && bottom > 0 {
-                                self.for_nodes_rec(
-                                    data.sw(),
-                                    level,
-                                    (left + 1, right.min(0) + 1, top.max(0), bottom),
-                                    (offset.0 - 1, offset.1),
-                                    f,
-                                );
-                            }
-                            if right > 0 && bottom > 0 {
-                                self.for_nodes_rec(
-                                    data.se(),
-                                    level,
-                                    (left.max(0), right, top.max(0), bottom),
-                                    (offset.0, offset.1),
-                                    f,
-                                );
-                            }
-                        };
-                    }
-                }
-            }
-        }
-    }
-
     fn step_node(&mut self, node: Node) -> Node {
         match node {
             Node::Leaf(leaf) => {
@@ -557,7 +387,7 @@ impl World {
     }
 
     fn step_leaf(&self, leaf: Leaf) -> Leaf {
-        self.rule.rule_table[leaf as usize] as u16
+        self.rule.rule_table[leaf as usize] as Leaf
     }
 
     fn step_id(&mut self, id: NodeId) -> Node {
@@ -836,27 +666,5 @@ mod tests {
             assert_eq!(world.population(), n);
         }
         assert_eq!(world.get_generation(), 80);
-    }
-
-    #[test]
-    fn test_for_living_cells() {
-        let mut world = World::default();
-        world.root = Node::Leaf(0b_0000_0011_0110_0010);
-        world.step();
-        let mut cells = Vec::new();
-        world.for_living_cells((-2, 2, -2, 2), |x, y| cells.push((x, y)));
-        assert_eq!(
-            cells,
-            vec![(-1, -1), (0, -1), (1, -1), (-1, 0), (-1, 1), (0, 1)]
-        );
-        cells.clear();
-        world.for_nodes(1, (-2, 2, -2, 2), |x, y| cells.push((x, y)));
-        assert_eq!(cells, vec![(-1, -1), (0, -1), (-1, 0), (0, 0)]);
-        world.set_step(3);
-        world.step();
-        assert_eq!(world.get_generation(), 9);
-        cells.clear();
-        world.for_nodes(2, (-2, 2, -2, 2), |x, y| cells.push((x, y)));
-        assert_eq!(cells, vec![(-1, -1), (0, -1), (-1, 0), (0, 0)]);
     }
 }

@@ -3,12 +3,10 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use hashlife::World;
 use std::time::Duration;
 
-fn run_pattern(pattern: &str, rule_string: &str, step_log2: u8, steps: u32) {
-    let mut world = World::new_with_step(rule_string.parse().unwrap(), step_log2);
-    for cell in Rle::new(pattern).unwrap() {
-        let (x, y) = cell.unwrap().position;
-        world.set_cell(x, y, true);
-    }
+fn run_pattern(pattern: &str, step_log2: u8, steps: u32) {
+    let rle = Rle::new(pattern).unwrap();
+    let mut world = World::from_rle(rle).unwrap();
+    world.set_step(step_log2);
     for _ in 0..steps {
         world.step();
     }
@@ -24,7 +22,6 @@ fn criterion_benchmark(c: &mut Criterion) {
             b.iter(|| {
                 run_pattern(
                     include_str!("../patterns/c4-diag-switch-engines.rle"),
-                    "B3/S23",
                     16,
                     16,
                 )
@@ -34,31 +31,16 @@ fn criterion_benchmark(c: &mut Criterion) {
             b.iter(|| {
                 run_pattern(
                     include_str!("../patterns/switch-engine-breeder.rle"),
-                    "B3/S23",
                     20,
                     16,
                 )
             })
         })
         .bench_function("zigzag-wickstretcher", |b| {
-            b.iter(|| {
-                run_pattern(
-                    include_str!("../patterns/zigzag-wickstretcher.rle"),
-                    "B3/S23",
-                    20,
-                    16,
-                )
-            })
+            b.iter(|| run_pattern(include_str!("../patterns/zigzag-wickstretcher.rle"), 20, 16))
         })
         .bench_function("sierpinski-builder", |b| {
-            b.iter(|| {
-                run_pattern(
-                    include_str!("../patterns/Sierpinski-builder.rle"),
-                    "B3/S23-a4ei6",
-                    20,
-                    16,
-                )
-            })
+            b.iter(|| run_pattern(include_str!("../patterns/Sierpinski-builder.rle"), 20, 16))
         });
 
     group.finish();
