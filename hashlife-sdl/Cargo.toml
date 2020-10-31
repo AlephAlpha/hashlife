@@ -9,5 +9,4 @@ edition = "2018"
 [dependencies]
 ca-formats = "0.2.2"
 hashlife = { path = "../" }
-rand = "0.7.3"
 sdl2 = "0.34.3"

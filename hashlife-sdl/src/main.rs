@@ -1,6 +1,5 @@
 use ca_formats::{macrocell::Macrocell, rle::Rle};
 use hashlife::World;
-use rand::random;
 use sdl2::{
     self,
     event::{Event, WindowEvent},
@@ -28,12 +27,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             world = World::from_rle(rle)?;
         }
     } else {
-        world = World::default();
-        for x in -256..256 {
-            for y in -256..256 {
-                world.set_cell(x, y, random());
-            }
-        }
+        let macrocell = Macrocell::new(include_str!("../../patterns/metapixel-galaxy.mc"))?;
+        world = World::from_macrocell(macrocell)?;
     }
 
     let sdl = sdl2::init()?;
