@@ -149,7 +149,6 @@ impl World {
         self.generation += 1 << self.step;
         if self.node_data.len() >= self.gc_threshold {
             self.garbage_collect();
-            eprintln!("GC!")
         }
     }
 
@@ -207,12 +206,13 @@ impl World {
     pub fn garbage_collect(&mut self) {
         self.empty_nodes.last().map(|&node| self.mark_gc(node));
         self.mark_gc(self.root);
+        self.hash_table.clear();
         for i in 0..self.node_data.capacity() {
             if let Some(data) = self.node_data.get(i) {
                 if data.gc_mark.get() {
+                    self.hash_table.insert(data.children, NodeId(i as u32));
                     data.gc_mark.set(false);
                 } else {
-                    self.hash_table.remove(&data.children);
                     self.node_data.remove(i);
                 }
             }
@@ -719,8 +719,8 @@ mod tests {
         assert_eq!(world.population(), 5);
         let populations = [141, 188, 204, 162, 116, 116, 116, 116];
         for &n in populations.iter() {
-            world.garbage_collect();
             world.step();
+            world.garbage_collect();
             assert_eq!(world.population(), n);
         }
     }
