@@ -7,6 +7,5 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ca-formats = "0.2.2"
 hashlife = { path = "../" }
 sdl2 = "0.34.3"

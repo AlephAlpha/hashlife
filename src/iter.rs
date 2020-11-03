@@ -1,4 +1,4 @@
-use crate::life::{Node, World};
+use crate::world::{Node, World};
 
 impl World {
     // Bound: (left, right, top, bottom).

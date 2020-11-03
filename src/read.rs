@@ -1,4 +1,4 @@
-use crate::life::{Leaf, Node, World};
+use crate::world::{Leaf, Node, World};
 use ca_formats::{
     macrocell::{Error as MacrocellError, Macrocell, NodeData},
     rle::{Error as RleError, Rle},

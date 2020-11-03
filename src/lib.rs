@@ -1,7 +1,9 @@
+mod evolve;
 mod iter;
-mod life;
 mod read;
 mod rule;
+mod world;
 
-pub use life::World;
+pub use ca_formats;
 pub use rule::Rule;
+pub use world::World;

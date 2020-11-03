@@ -1,5 +1,7 @@
-use ca_formats::{macrocell::Macrocell, rle::Rle};
-use hashlife::World;
+use hashlife::{
+    ca_formats::{macrocell::Macrocell, rle::Rle},
+    World,
+};
 use sdl2::{
     self,
     event::{Event, WindowEvent},
