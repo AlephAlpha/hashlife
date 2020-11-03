@@ -2,7 +2,7 @@
 
 玩过才知道，HashLife 算法中最费时间的部分在 HashMap。所以不要用 Rust 自带的 Hash 算法，可以用 [rustc-hash](https://crates.io/crates/rustc-hash) 这个 crate 里的 `FxHashMap`。
 
-由于还没实现垃圾回收，消耗的内存大得离谱，运行较大的图样时要小心。
+已实现垃圾回收，但特别慢，每次到了需要垃圾回收的时候就会卡上十几秒。
 
 参考了以下项目：
 

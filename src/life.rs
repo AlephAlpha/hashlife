@@ -1,10 +1,15 @@
 use crate::rule::Rule;
 use rustc_hash::FxHashMap;
-use std::ops::{Index, IndexMut};
+use slab::Slab;
+use std::{
+    cell::Cell,
+    ops::{Index, IndexMut},
+};
 
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub(crate) struct NodeId(u32);
 pub(crate) type Leaf = u16;
+const GC_THRESHOLD: usize = 1 << 24;
 
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub(crate) enum Node {
@@ -49,6 +54,7 @@ pub(crate) struct NodeData {
     children: QuadChildren,
     cache_step: Option<Node>,
     cache_step_max: Option<Node>,
+    gc_mark: Cell<bool>,
 }
 
 impl NodeData {
@@ -87,9 +93,10 @@ pub struct World {
     generation: u64,
     step: u8,
     hash_table: FxHashMap<QuadChildren, NodeId>,
-    node_data: Vec<NodeData>,
+    node_data: Slab<NodeData>,
     empty_nodes: Vec<Node>,
     pub(crate) root: Node,
+    gc_threshold: usize,
 }
 
 impl Index<NodeId> for World {
@@ -119,7 +126,7 @@ impl World {
 
     pub fn new_with_step(rule: Rule, step: u8) -> Self {
         let hash_table = FxHashMap::default();
-        let node_data = Vec::new();
+        let node_data = Slab::new();
         let empty_nodes = Vec::new();
         let root = Node::Leaf(0);
         World {
@@ -130,6 +137,7 @@ impl World {
             node_data,
             empty_nodes,
             root,
+            gc_threshold: GC_THRESHOLD,
         }
     }
 
@@ -139,6 +147,10 @@ impl World {
         }
         self.root = self.step_node(self.root);
         self.generation += 1 << self.step;
+        if self.node_data.len() >= self.gc_threshold {
+            self.garbage_collect();
+            eprintln!("GC!")
+        }
     }
 
     pub fn population(&self) -> u64 {
@@ -189,6 +201,37 @@ impl World {
         }
         self.generation = 0;
         self.root = Node::Leaf(0);
+    }
+
+    // Warning: slow!
+    pub fn garbage_collect(&mut self) {
+        self.empty_nodes.last().map(|&node| self.mark_gc(node));
+        self.mark_gc(self.root);
+        for i in 0..self.node_data.capacity() {
+            if let Some(data) = self.node_data.get(i) {
+                if data.gc_mark.get() {
+                    data.gc_mark.set(false);
+                } else {
+                    self.hash_table.remove(&data.children);
+                    self.node_data.remove(i);
+                }
+            }
+        }
+    }
+
+    fn mark_gc(&self, node: Node) {
+        if let Node::NodeId(id) = node {
+            let data = &self[id];
+            if !data.gc_mark.get() {
+                data.gc_mark.set(true);
+                self.mark_gc(data.nw());
+                self.mark_gc(data.ne());
+                self.mark_gc(data.sw());
+                self.mark_gc(data.se());
+                data.cache_step.map(|node| self.mark_gc(node));
+                data.cache_step_max.map(|node| self.mark_gc(node));
+            }
+        }
     }
 
     pub(crate) fn empty_node(&mut self, level: u8) -> Node {
@@ -260,25 +303,25 @@ impl World {
 
     fn clear_cache(&mut self) {
         self.node_data.iter_mut().for_each(|node| {
-            node.cache_step.take();
+            node.1.cache_step.take();
         })
     }
 
     pub(crate) fn find_node(&mut self, nw: Node, ne: Node, sw: Node, se: Node) -> NodeId {
         let children = QuadChildren::new(nw, ne, sw, se);
         self.hash_table.get(&children).copied().unwrap_or_else(|| {
-            let new_id = NodeId(self.node_data.len() as u32);
             let level = self.children_level(children) + 1;
             let population = self.children_population(children);
-            self.hash_table.insert(children, new_id);
-            self.node_data.push(NodeData {
+            let id = NodeId(self.node_data.insert(NodeData {
                 level,
                 population,
                 children,
                 cache_step: None,
                 cache_step_max: None,
-            });
-            new_id
+                gc_mark: Cell::new(false),
+            }) as u32);
+            self.hash_table.insert(children, id);
+            id
         })
     }
 
@@ -666,5 +709,19 @@ mod tests {
             assert_eq!(world.population(), n);
         }
         assert_eq!(world.get_generation(), 80);
+    }
+
+    #[test]
+    fn test_gc() {
+        let mut world = World::default();
+        world.set_step(8);
+        world.root = Node::Leaf(0b_0000_0011_0110_0010);
+        assert_eq!(world.population(), 5);
+        let populations = [141, 188, 204, 162, 116, 116, 116, 116];
+        for &n in populations.iter() {
+            world.garbage_collect();
+            world.step();
+            assert_eq!(world.population(), n);
+        }
     }
 }
