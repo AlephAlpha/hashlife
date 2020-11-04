@@ -10,4 +10,5 @@ cargo run --release path/to/an/rle/or/macrocell/file
 * `-`: Slower
 * `W` `A` `S` `D` / Arrow keys / Mouse drag: Move
 * Mouse wheel: Zoom in / out
+* `F`: Fit pattern
 * `Esc`: Quit

@@ -191,7 +191,6 @@ impl World {
         self.root = Node::Leaf(0);
     }
 
-    // Warning: slow!
     pub fn garbage_collect(&mut self) {
         self.empty_nodes.last().map(|&node| self.mark_gc(node));
         self.mark_gc(self.root);
@@ -205,6 +204,19 @@ impl World {
             }
             mark
         });
+    }
+
+    pub fn bound(&self) -> Option<(i64, i64, i64, i64)> {
+        match (
+            self.left_bound(self.root),
+            self.right_bound(self.root),
+            self.top_bound(self.root),
+            self.bottom_bound(self.root),
+        ) {
+            (Some(left), Some(right), Some(top), Some(bottom)) => Some((left, right, top, bottom)),
+            (None, None, None, None) => None,
+            _ => unreachable!(),
+        }
     }
 
     pub(crate) fn check_gc(&mut self) {
@@ -412,6 +424,154 @@ impl World {
             }
         }
     }
+
+    fn left_bound(&self, node: Node) -> Option<i64> {
+        if self.node_population(node) == 0 {
+            return None;
+        }
+        match node {
+            Node::Leaf(leaf) => {
+                if leaf & 0x8888 != 0 {
+                    Some(-2)
+                } else if leaf & 0x4444 != 0 {
+                    Some(-1)
+                } else if leaf & 0x2222 != 0 {
+                    Some(0)
+                } else if leaf & 0x1111 != 0 {
+                    Some(1)
+                } else {
+                    None
+                }
+            }
+            Node::NodeId(id) => {
+                let node_size = 1 << (self.node_level(node) - 2);
+                let data = &self[id];
+                self.left_bound(data.nw())
+                    .into_iter()
+                    .chain(self.left_bound(data.sw()).into_iter())
+                    .min()
+                    .map(|min| min - node_size)
+                    .or_else(|| {
+                        self.left_bound(data.ne())
+                            .into_iter()
+                            .chain(self.left_bound(data.se()).into_iter())
+                            .min()
+                            .map(|min| min + node_size)
+                    })
+            }
+        }
+    }
+
+    fn right_bound(&self, node: Node) -> Option<i64> {
+        if self.node_population(node) == 0 {
+            return None;
+        }
+        match node {
+            Node::Leaf(leaf) => {
+                if leaf & 0x1111 != 0 {
+                    Some(2)
+                } else if leaf & 0x2222 != 0 {
+                    Some(1)
+                } else if leaf & 0x4444 != 0 {
+                    Some(0)
+                } else if leaf & 0x8888 != 0 {
+                    Some(-1)
+                } else {
+                    None
+                }
+            }
+            Node::NodeId(id) => {
+                let node_size = 1 << (self.node_level(node) - 2);
+                let data = &self[id];
+                self.right_bound(data.ne())
+                    .into_iter()
+                    .chain(self.right_bound(data.se()).into_iter())
+                    .max()
+                    .map(|max| max + node_size)
+                    .or_else(|| {
+                        self.right_bound(data.nw())
+                            .into_iter()
+                            .chain(self.right_bound(data.sw()).into_iter())
+                            .max()
+                            .map(|max| max - node_size)
+                    })
+            }
+        }
+    }
+
+    fn top_bound(&self, node: Node) -> Option<i64> {
+        if self.node_population(node) == 0 {
+            return None;
+        }
+        match node {
+            Node::Leaf(leaf) => {
+                if leaf & 0xf000 != 0 {
+                    Some(-2)
+                } else if leaf & 0x0f00 != 0 {
+                    Some(-1)
+                } else if leaf & 0x00f0 != 0 {
+                    Some(0)
+                } else if leaf & 0x000f != 0 {
+                    Some(1)
+                } else {
+                    None
+                }
+            }
+            Node::NodeId(id) => {
+                let node_size = 1 << (self.node_level(node) - 2);
+                let data = &self[id];
+                self.top_bound(data.nw())
+                    .into_iter()
+                    .chain(self.top_bound(data.ne()).into_iter())
+                    .min()
+                    .map(|min| min - node_size)
+                    .or_else(|| {
+                        self.top_bound(data.sw())
+                            .into_iter()
+                            .chain(self.top_bound(data.se()).into_iter())
+                            .min()
+                            .map(|min| min + node_size)
+                    })
+            }
+        }
+    }
+
+    fn bottom_bound(&self, node: Node) -> Option<i64> {
+        if self.node_population(node) == 0 {
+            return None;
+        }
+        match node {
+            Node::Leaf(leaf) => {
+                if leaf & 0x000f != 0 {
+                    Some(2)
+                } else if leaf & 0x00f0 != 0 {
+                    Some(1)
+                } else if leaf & 0x0f00 != 0 {
+                    Some(0)
+                } else if leaf & 0xf000 != 0 {
+                    Some(-1)
+                } else {
+                    None
+                }
+            }
+            Node::NodeId(id) => {
+                let node_size = 1 << (self.node_level(node) - 2);
+                let data = &self[id];
+                self.bottom_bound(data.sw())
+                    .into_iter()
+                    .chain(self.bottom_bound(data.se()).into_iter())
+                    .max()
+                    .map(|max| max + node_size)
+                    .or_else(|| {
+                        self.bottom_bound(data.nw())
+                            .into_iter()
+                            .chain(self.bottom_bound(data.ne()).into_iter())
+                            .max()
+                            .map(|max| max - node_size)
+                    })
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -490,5 +650,15 @@ mod tests {
             world.garbage_collect();
             assert_eq!(world.population(), n);
         }
+    }
+
+    #[test]
+    fn test_bound() {
+        let mut world = World::default();
+        world.set_step(8);
+        world.root = Node::Leaf(0b_0000_0011_0110_0010);
+        assert_eq!(world.bound(), Some((-1, 2, -1, 2)));
+        world.step();
+        assert_eq!(world.bound(), Some((-41, 48, -47, 54)));
     }
 }
