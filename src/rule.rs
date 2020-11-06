@@ -32,9 +32,7 @@ pub struct Rule {
 
 impl Debug for Rule {
     fn fmt(&self, f: &mut Formatter<'_>) -> DebugResult {
-        f.debug_struct("Rule")
-            .field("rule_table", &self.rule_table.to_vec())
-            .finish()
+        f.debug_struct("Rule").finish()
     }
 }
 

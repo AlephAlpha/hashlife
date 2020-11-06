@@ -1,10 +1,7 @@
 use crate::rule::Rule;
 use rustc_hash::FxHashMap;
 use slab::Slab;
-use std::{
-    cell::Cell,
-    ops::{Index, IndexMut},
-};
+use std::ops::{Index, IndexMut};
 
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub(crate) struct NodeId(u32);
@@ -53,8 +50,7 @@ pub(crate) struct NodeData {
     population: u64,
     pub(crate) children: QuadChildren,
     pub(crate) cache_step: Option<Node>,
-    pub(crate) cache_step_max: Option<Node>,
-    gc_mark: Cell<bool>,
+    gc_mark: bool,
 }
 
 impl NodeData {
@@ -166,6 +162,7 @@ impl World {
 
     pub fn set_step(&mut self, step: u8) -> &mut Self {
         self.clear_cache();
+        self.garbage_collect();
         self.step = step;
         self
     }
@@ -192,15 +189,18 @@ impl World {
     }
 
     pub fn garbage_collect(&mut self) {
-        self.empty_nodes.last().map(|&node| self.mark_gc(node));
+        self.empty_nodes
+            .last()
+            .copied()
+            .map(|node| self.mark_gc(node));
         self.mark_gc(self.root);
         let hash_table = &mut self.hash_table;
         hash_table.clear();
         self.node_data.retain(|i, data| {
-            let mark = data.gc_mark.get();
+            let mark = data.gc_mark;
             if mark {
                 hash_table.insert(data.children, NodeId(i as u32));
-                data.gc_mark.set(false);
+                data.gc_mark = false;
             }
             mark
         });
@@ -225,17 +225,15 @@ impl World {
         }
     }
 
-    fn mark_gc(&self, node: Node) {
+    fn mark_gc(&mut self, node: Node) {
         if let Node::NodeId(id) = node {
-            let data = &self[id];
-            if !data.gc_mark.get() {
-                data.gc_mark.set(true);
-                self.mark_gc(data.nw());
-                self.mark_gc(data.ne());
-                self.mark_gc(data.sw());
-                self.mark_gc(data.se());
-                data.cache_step.map(|node| self.mark_gc(node));
-                data.cache_step_max.map(|node| self.mark_gc(node));
+            if !self[id].gc_mark {
+                self[id].gc_mark = true;
+                self.mark_gc(self[id].nw());
+                self.mark_gc(self[id].ne());
+                self.mark_gc(self[id].sw());
+                self.mark_gc(self[id].se());
+                self[id].cache_step.map(|node| self.mark_gc(node));
             }
         }
     }
@@ -323,8 +321,7 @@ impl World {
                 population,
                 children,
                 cache_step: None,
-                cache_step_max: None,
-                gc_mark: Cell::new(false),
+                gc_mark: false,
             }) as u32);
             self.hash_table.insert(children, id);
             id
