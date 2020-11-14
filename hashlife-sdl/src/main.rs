@@ -174,6 +174,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     let step = world.get_step();
                     if step < std::u8::MAX {
                         world.set_step(step + 1);
+                        need_update = true;
                     }
                 }
                 Event::KeyDown {
@@ -183,6 +184,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     let step = world.get_step();
                     if step > 0 {
                         world.set_step(step - 1);
+                        need_update = true;
                     }
                 }
                 Event::MouseMotion {
