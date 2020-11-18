@@ -55,11 +55,11 @@ impl World {
         let t21 = self.step_leaf((sw & 0x3333) << 2 | (se & 0xcccc) >> 2);
         let t22 = self.step_leaf(se);
         if max {
-            let new_nw = self.step_leaf(t00 << 10 | t01 << 8 | t10 << 2 | t11 << 0);
-            let new_ne = self.step_leaf(t01 << 10 | t02 << 8 | t11 << 2 | t12 << 0);
-            let new_sw = self.step_leaf(t10 << 10 | t11 << 8 | t20 << 2 | t21 << 0);
-            let new_se = self.step_leaf(t11 << 10 | t12 << 8 | t21 << 2 | t22 << 0);
-            Node::Leaf(new_nw << 10 | new_ne << 8 | new_sw << 2 | new_se << 0)
+            let new_nw = self.step_leaf(t00 << 10 | t01 << 8 | t10 << 2 | t11);
+            let new_ne = self.step_leaf(t01 << 10 | t02 << 8 | t11 << 2 | t12);
+            let new_sw = self.step_leaf(t10 << 10 | t11 << 8 | t20 << 2 | t21);
+            let new_se = self.step_leaf(t11 << 10 | t12 << 8 | t21 << 2 | t22);
+            Node::Leaf(new_nw << 10 | new_ne << 8 | new_sw << 2 | new_se)
         } else {
             Node::Leaf(
                 (t00 & 0x01) << 15

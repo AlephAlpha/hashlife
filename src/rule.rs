@@ -43,11 +43,11 @@ impl From<Rule3x3> for Rule {
             let nw_3x3 = (i & 0xe000) >> 7 | (i & 0x0e00) >> 6 | (i & 0x00e0) >> 5;
             let ne_3x3 = (i & 0x7000) >> 6 | (i & 0x0700) >> 5 | (i & 0x0070) >> 4;
             let sw_3x3 = (i & 0x0e00) >> 3 | (i & 0x00e0) >> 2 | (i & 0x000e) >> 1;
-            let se_3x3 = (i & 0x0700) >> 2 | (i & 0x0070) >> 1 | (i & 0x0007) >> 0;
+            let se_3x3 = (i & 0x0700) >> 2 | (i & 0x0070) >> 1 | (i & 0x0007);
             *n = (rule_3x3.rule_table[nw_3x3] as u8) << 5
                 | (rule_3x3.rule_table[ne_3x3] as u8) << 4
                 | (rule_3x3.rule_table[sw_3x3] as u8) << 1
-                | (rule_3x3.rule_table[se_3x3] as u8) << 0;
+                | (rule_3x3.rule_table[se_3x3] as u8);
         });
         Rule { rule_table }
     }

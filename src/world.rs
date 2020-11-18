@@ -189,10 +189,9 @@ impl World {
     }
 
     pub fn garbage_collect(&mut self) {
-        self.empty_nodes
-            .last()
-            .copied()
-            .map(|node| self.mark_gc(node));
+        if let Some(&node) = self.empty_nodes.last() {
+            self.mark_gc(node);
+        };
         self.mark_gc(self.root);
         let hash_table = &mut self.hash_table;
         hash_table.clear();
@@ -233,7 +232,9 @@ impl World {
                 self.mark_gc(self[id].ne());
                 self.mark_gc(self[id].sw());
                 self.mark_gc(self[id].se());
-                self[id].cache_step.map(|node| self.mark_gc(node));
+                if let Some(node) = self[id].cache_step {
+                    self.mark_gc(node);
+                }
             }
         }
     }
@@ -244,7 +245,7 @@ impl World {
             self.empty_nodes.push(Node::Leaf(0));
         }
         while self.empty_nodes.len() <= level as usize - 2 {
-            let last = self.empty_nodes.last().unwrap().clone();
+            let last = *self.empty_nodes.last().unwrap();
             let new = self.find_node(last, last, last, last);
             self.empty_nodes.push(Node::NodeId(new));
         }

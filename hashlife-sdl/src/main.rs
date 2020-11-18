@@ -27,7 +27,7 @@ const MAX_SCALE: u8 = 63 + SCALE_OFFSET;
 const FRAME_TIME: Duration = Duration::from_nanos(1_000_000_000 / 60);
 
 fn make_world() -> Result<World, Box<dyn Error>> {
-    let arg = args().skip(1).next();
+    let arg = args().nth(1);
     if let Some(path) = arg {
         let file = File::open(&path)?;
         if path.ends_with(".gz") {
