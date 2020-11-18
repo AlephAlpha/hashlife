@@ -60,10 +60,7 @@ fn totalperiodic() {
 #[test]
 fn demonoid_c512_hashlife_friendly() {
     assert_eq!(
-        run_macrocell(
-            include_str!("../patterns/demonoid-c512-hashlife-friendly.mc"),
-            12
-        ),
-        107005
+        run_macrocell(include_str!("../patterns/metapixel-galaxy.mc"), 10),
+        7044895
     );
 }

@@ -1,3 +1,4 @@
+use flate2::read::GzDecoder;
 use hashlife::{
     ca_formats::{macrocell::Macrocell, rle::Rle},
     World,
@@ -29,7 +30,16 @@ fn make_world() -> Result<World, Box<dyn Error>> {
     let arg = args().skip(1).next();
     if let Some(path) = arg {
         let file = File::open(&path)?;
-        if path.ends_with(".mc") {
+        if path.ends_with(".gz") {
+            let unzipped = GzDecoder::new(file);
+            if path.ends_with(".mc.gz") {
+                let macrocell = Macrocell::new_from_file(unzipped)?;
+                Ok(World::from_macrocell(macrocell)?)
+            } else {
+                let rle = Rle::new_from_file(unzipped)?;
+                Ok(World::from_rle(rle)?)
+            }
+        } else if path.ends_with(".mc") {
             let macrocell = Macrocell::new_from_file(file)?;
             Ok(World::from_macrocell(macrocell)?)
         } else {
@@ -37,8 +47,8 @@ fn make_world() -> Result<World, Box<dyn Error>> {
             Ok(World::from_rle(rle)?)
         }
     } else {
-        let macrocell = Macrocell::new(include_str!("../../patterns/metapixel-galaxy.mc"))?;
-        Ok(World::from_macrocell(macrocell)?)
+        let rle = Rle::new("b2o$2o$bo!")?;
+        Ok(World::from_rle(rle)?)
     }
 }
 

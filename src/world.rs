@@ -6,7 +6,7 @@ use std::ops::{Index, IndexMut};
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub(crate) struct NodeId(u32);
 pub(crate) type Leaf = u16;
-const GC_THRESHOLD: usize = 1 << 24;
+const GC_THRESHOLD: usize = 3 << 23;
 
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub(crate) enum Node {
