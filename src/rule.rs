@@ -68,6 +68,7 @@ impl FromStr for Rule {
 }
 
 #[cfg(test)]
+#[allow(clippy::unusual_byte_groupings)]
 mod tests {
     use super::{ParseNtLife, Rule, Rule3x3};
     use std::error::Error;
