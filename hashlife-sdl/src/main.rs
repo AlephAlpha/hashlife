@@ -83,7 +83,7 @@ impl App {
         let left = -width / 2;
         let top = -height / 2;
         let scale = 0;
-        let mut app = App {
+        let mut app = Self {
             world,
             sdl,
             canvas,

@@ -24,7 +24,7 @@ impl World {
         }
     }
 
-    fn step_leaf(&self, leaf: Leaf) -> Leaf {
+    const fn step_leaf(&self, leaf: Leaf) -> Leaf {
         self.rule.rule_table[leaf as usize] as Leaf
     }
 
@@ -42,7 +42,7 @@ impl World {
         node
     }
 
-    fn step_quad_leaf(&self, nw: Leaf, ne: Leaf, sw: Leaf, se: Leaf, max: bool) -> Node {
+    const fn step_quad_leaf(&self, nw: Leaf, ne: Leaf, sw: Leaf, se: Leaf, max: bool) -> Node {
         let t00 = self.step_leaf(nw);
         let t01 = self.step_leaf((nw & 0x3333) << 2 | (ne & 0xcccc) >> 2);
         let t02 = self.step_leaf(ne);
@@ -131,7 +131,6 @@ impl World {
 }
 
 #[cfg(test)]
-#[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
 

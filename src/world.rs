@@ -4,18 +4,18 @@ use slab::Slab;
 use std::ops::{Index, IndexMut};
 
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
-pub(crate) struct NodeId(u32);
-pub(crate) type Leaf = u16;
+pub struct NodeId(u32);
+pub type Leaf = u16;
 const GC_THRESHOLD: usize = 3 << 23;
 
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
-pub(crate) enum Node {
+pub enum Node {
     Leaf(Leaf),
     NodeId(NodeId),
 }
 
 #[derive(Hash, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
-pub(crate) enum QuadChildren {
+pub enum QuadChildren {
     Leaf {
         nw: Leaf,
         ne: Leaf,
@@ -34,10 +34,10 @@ impl QuadChildren {
     fn new(nw: Node, ne: Node, sw: Node, se: Node) -> Self {
         match (nw, ne, sw, se) {
             (Node::Leaf(nw), Node::Leaf(ne), Node::Leaf(sw), Node::Leaf(se)) => {
-                QuadChildren::Leaf { nw, ne, sw, se }
+                Self::Leaf { nw, ne, sw, se }
             }
             (Node::NodeId(nw), Node::NodeId(ne), Node::NodeId(sw), Node::NodeId(se)) => {
-                QuadChildren::NodeId { nw, ne, sw, se }
+                Self::NodeId { nw, ne, sw, se }
             }
             _ => unreachable!("All children must have the same level."),
         }
@@ -45,37 +45,37 @@ impl QuadChildren {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct NodeData {
-    pub(crate) level: u8,
+pub struct NodeData {
+    pub level: u8,
     population: u64,
-    pub(crate) children: QuadChildren,
-    pub(crate) cache_step: Option<Node>,
+    pub children: QuadChildren,
+    pub cache_step: Option<Node>,
     gc_mark: bool,
 }
 
 impl NodeData {
-    pub(crate) fn nw(&self) -> Node {
+    pub const fn nw(&self) -> Node {
         match self.children {
             QuadChildren::NodeId { nw, .. } => Node::NodeId(nw),
             QuadChildren::Leaf { nw, .. } => Node::Leaf(nw),
         }
     }
 
-    pub(crate) fn ne(&self) -> Node {
+    pub const fn ne(&self) -> Node {
         match self.children {
             QuadChildren::NodeId { ne, .. } => Node::NodeId(ne),
             QuadChildren::Leaf { ne, .. } => Node::Leaf(ne),
         }
     }
 
-    pub(crate) fn sw(&self) -> Node {
+    pub const fn sw(&self) -> Node {
         match self.children {
             QuadChildren::NodeId { sw, .. } => Node::NodeId(sw),
             QuadChildren::Leaf { sw, .. } => Node::Leaf(sw),
         }
     }
 
-    pub(crate) fn se(&self) -> Node {
+    pub const fn se(&self) -> Node {
         match self.children {
             QuadChildren::NodeId { se, .. } => Node::NodeId(se),
             QuadChildren::Leaf { se, .. } => Node::Leaf(se),
@@ -111,7 +111,7 @@ impl IndexMut<NodeId> for World {
 
 impl Default for World {
     fn default() -> Self {
-        World::new("B3/S23".parse().unwrap())
+        Self::new("B3/S23".parse().unwrap())
     }
 }
 
@@ -125,7 +125,7 @@ impl World {
         let node_data = Slab::new();
         let empty_nodes = Vec::new();
         let root = Node::Leaf(0);
-        World {
+        Self {
             rule,
             generation: 0,
             step,
@@ -156,7 +156,7 @@ impl World {
         self
     }
 
-    pub fn get_step(&self) -> u8 {
+    pub const fn get_step(&self) -> u8 {
         self.step
     }
 
@@ -167,7 +167,7 @@ impl World {
         self
     }
 
-    pub fn get_generation(&self) -> u64 {
+    pub const fn get_generation(&self) -> u64 {
         self.generation
     }
 
@@ -573,7 +573,6 @@ impl World {
 }
 
 #[cfg(test)]
-#[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
 

@@ -21,7 +21,7 @@ impl ParseNtLife for Rule3x3 {
                     .map(|n| ((n & 0xf0) as usize) << 1 | 0x10 | (n & 0x0f) as usize),
             )
             .for_each(|n| rule_table[n] = true);
-        Rule3x3 { rule_table }
+        Self { rule_table }
     }
 }
 
@@ -49,7 +49,7 @@ impl From<Rule3x3> for Rule {
                 | (rule_3x3.rule_table[sw_3x3] as u8) << 1
                 | (rule_3x3.rule_table[se_3x3] as u8);
         });
-        Rule { rule_table }
+        Self { rule_table }
     }
 }
 
@@ -63,12 +63,11 @@ impl FromStr for Rule {
     type Err = ParseRuleError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Rule::parse_rule(s)
+        Self::parse_rule(s)
     }
 }
 
 #[cfg(test)]
-#[allow(clippy::unusual_byte_groupings)]
 mod tests {
     use super::{ParseNtLife, Rule, Rule3x3};
     use std::error::Error;
@@ -76,14 +75,14 @@ mod tests {
     #[test]
     fn parse_rule_3x3() -> Result<(), Box<dyn Error>> {
         let rule = Rule3x3::parse_rule("B3/S23")?;
-        assert_eq!(rule.rule_table[0b_000_000_000], false);
-        assert_eq!(rule.rule_table[0b_000_010_000], false);
-        assert_eq!(rule.rule_table[0b_000_000_110], false);
-        assert_eq!(rule.rule_table[0b_000_010_110], true);
-        assert_eq!(rule.rule_table[0b_100_000_110], true);
-        assert_eq!(rule.rule_table[0b_100_010_110], true);
-        assert_eq!(rule.rule_table[0b_100_100_110], false);
-        assert_eq!(rule.rule_table[0b_100_110_110], false);
+        assert_eq!(rule.rule_table[0b0_0000_0000], false);
+        assert_eq!(rule.rule_table[0b0_0001_0000], false);
+        assert_eq!(rule.rule_table[0b0_0000_0110], false);
+        assert_eq!(rule.rule_table[0b0_0001_0110], true);
+        assert_eq!(rule.rule_table[0b1_0000_0110], true);
+        assert_eq!(rule.rule_table[0b1_0001_0110], true);
+        assert_eq!(rule.rule_table[0b1_0010_0110], false);
+        assert_eq!(rule.rule_table[0b1_0011_0110], false);
         Ok(())
     }
 

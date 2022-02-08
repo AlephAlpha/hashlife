@@ -12,7 +12,7 @@ impl World {
             .and_then(|header| header.rule.as_deref())
             .and_then(|rulestring| rulestring.parse().ok())
             .unwrap_or_else(|| "B3/S23".parse().unwrap());
-        let mut world = World::new(rule);
+        let mut world = Self::new(rule);
         for cell in rle {
             let (x, y) = cell?.position;
             world.set_cell(x, y, true);
@@ -25,7 +25,7 @@ impl World {
             .rule()
             .and_then(|rulestring| rulestring.parse().ok())
             .unwrap_or_else(|| "B3/S23".parse().unwrap());
-        let mut world = World::new(rule);
+        let mut world = Self::new(rule);
         let mut nodes = Vec::new();
         for node in macrocell {
             let node = node?;
