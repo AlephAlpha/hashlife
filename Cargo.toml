@@ -7,10 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ca-formats = "0.3.3"
+ca-formats = "0.3.4"
 ca-rules = "0.3.3"
 rustc-hash = "1.1.0"
-slab = "0.4.5"
+slab = "0.4.7"
 
 [dev-dependencies]
 criterion = "0.4.0"

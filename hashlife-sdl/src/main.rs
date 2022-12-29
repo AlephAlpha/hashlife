@@ -111,9 +111,7 @@ impl App {
                 .max(pattern_height as f64 / self.height as f64)
                 .log2()
                 .ceil() as i32;
-            self.scale = (SCALE_OFFSET as i32 + scale_diff)
-                .max(0)
-                .min(MAX_SCALE as i32) as u8;
+            self.scale = (SCALE_OFFSET as i32 + scale_diff).clamp(0, MAX_SCALE as i32) as u8;
             if self.scale >= SCALE_OFFSET {
                 self.left = (center.0 >> (self.scale - SCALE_OFFSET)) - self.width / 2;
                 self.top = (center.1 >> (self.scale - SCALE_OFFSET)) - self.height / 2;
@@ -167,7 +165,7 @@ impl App {
 
     fn rescale(&mut self, y: i32, mouse_state: MouseState) {
         let (mouse_x, mouse_y) = (mouse_state.x() as i64, mouse_state.y() as i64);
-        let new_scale = (self.scale as i32 - y).max(0).min(MAX_SCALE as i32) as u8;
+        let new_scale = (self.scale as i32 - y).clamp(0, MAX_SCALE as i32) as u8;
         if new_scale > self.scale {
             self.left = ((self.left + mouse_x) >> (new_scale - self.scale)) - mouse_x;
             self.top = ((self.top + mouse_y) >> (new_scale - self.scale)) - mouse_y;
@@ -260,11 +258,7 @@ impl App {
                         ..
                     } => self.is_running ^= true,
                     Event::KeyDown {
-                        keycode: Some(Keycode::Plus),
-                        ..
-                    }
-                    | Event::KeyDown {
-                        keycode: Some(Keycode::Equals),
+                        keycode: Some(Keycode::Plus | Keycode::Equals),
                         ..
                     } => self.faster(),
                     Event::KeyDown {
@@ -272,35 +266,19 @@ impl App {
                         ..
                     } => self.slower(),
                     Event::KeyDown {
-                        keycode: Some(Keycode::A),
-                        ..
-                    }
-                    | Event::KeyDown {
-                        keycode: Some(Keycode::Left),
+                        keycode: Some(Keycode::A | Keycode::Left),
                         ..
                     } => self.move_canvas(10, 0),
                     Event::KeyDown {
-                        keycode: Some(Keycode::D),
-                        ..
-                    }
-                    | Event::KeyDown {
-                        keycode: Some(Keycode::Right),
+                        keycode: Some(Keycode::D | Keycode::Right),
                         ..
                     } => self.move_canvas(-10, 0),
                     Event::KeyDown {
-                        keycode: Some(Keycode::W),
-                        ..
-                    }
-                    | Event::KeyDown {
-                        keycode: Some(Keycode::Up),
+                        keycode: Some(Keycode::W | Keycode::Up),
                         ..
                     } => self.move_canvas(0, 10),
                     Event::KeyDown {
-                        keycode: Some(Keycode::S),
-                        ..
-                    }
-                    | Event::KeyDown {
-                        keycode: Some(Keycode::Down),
+                        keycode: Some(Keycode::S | Keycode::Down),
                         ..
                     } => self.move_canvas(0, -10),
                     Event::MouseMotion { xrel, yrel, .. } => {
