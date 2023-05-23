@@ -13,7 +13,7 @@ rustc-hash = "1.1.0"
 slab = "0.4.7"
 
 [dev-dependencies]
-criterion = "0.4.0"
+criterion = "0.5.0"
 
 [[bench]]
 name = "bench"
