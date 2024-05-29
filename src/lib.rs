@@ -1,3 +1,5 @@
+#![allow(clippy::bool_assert_comparison)]
+
 mod evolve;
 mod iter;
 mod read;

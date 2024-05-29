@@ -446,13 +446,13 @@ impl World {
                 let data = &self[id];
                 self.left_bound(data.nw())
                     .into_iter()
-                    .chain(self.left_bound(data.sw()).into_iter())
+                    .chain(self.left_bound(data.sw()))
                     .min()
                     .map(|min| min - node_size)
                     .or_else(|| {
                         self.left_bound(data.ne())
                             .into_iter()
-                            .chain(self.left_bound(data.se()).into_iter())
+                            .chain(self.left_bound(data.se()))
                             .min()
                             .map(|min| min + node_size)
                     })
@@ -483,13 +483,13 @@ impl World {
                 let data = &self[id];
                 self.right_bound(data.ne())
                     .into_iter()
-                    .chain(self.right_bound(data.se()).into_iter())
+                    .chain(self.right_bound(data.se()))
                     .max()
                     .map(|max| max + node_size)
                     .or_else(|| {
                         self.right_bound(data.nw())
                             .into_iter()
-                            .chain(self.right_bound(data.sw()).into_iter())
+                            .chain(self.right_bound(data.sw()))
                             .max()
                             .map(|max| max - node_size)
                     })
@@ -520,13 +520,13 @@ impl World {
                 let data = &self[id];
                 self.top_bound(data.nw())
                     .into_iter()
-                    .chain(self.top_bound(data.ne()).into_iter())
+                    .chain(self.top_bound(data.ne()))
                     .min()
                     .map(|min| min - node_size)
                     .or_else(|| {
                         self.top_bound(data.sw())
                             .into_iter()
-                            .chain(self.top_bound(data.se()).into_iter())
+                            .chain(self.top_bound(data.se()))
                             .min()
                             .map(|min| min + node_size)
                     })
@@ -557,13 +557,13 @@ impl World {
                 let data = &self[id];
                 self.bottom_bound(data.sw())
                     .into_iter()
-                    .chain(self.bottom_bound(data.se()).into_iter())
+                    .chain(self.bottom_bound(data.se()))
                     .max()
                     .map(|max| max + node_size)
                     .or_else(|| {
                         self.bottom_bound(data.nw())
                             .into_iter()
-                            .chain(self.bottom_bound(data.ne()).into_iter())
+                            .chain(self.bottom_bound(data.ne()))
                             .max()
                             .map(|max| max - node_size)
                     })
@@ -610,8 +610,10 @@ mod tests {
 
     #[test]
     fn test_set_step() {
-        let mut world = World::default();
-        world.root = Node::Leaf(0b_0000_0011_0110_0010);
+        let mut world = World {
+            root: Node::Leaf(0b_0000_0011_0110_0010),
+            ..Default::default()
+        };
         assert_eq!(world.population(), 5);
         assert_eq!(world.get_generation(), 0);
         let populations = [6, 7, 9, 8, 9, 12, 11, 18];
