@@ -8,5 +8,5 @@ edition = "2018"
 
 [dependencies]
 hashlife = { path = "../" }
-sdl2 = "0.36.0"
+sdl2 = "0.37.0"
 flate2 = "1.0.30"

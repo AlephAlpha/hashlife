@@ -143,7 +143,7 @@ impl App {
 
     fn faster(&mut self) {
         let step = self.world.get_step();
-        if step < std::u8::MAX {
+        if step < u8::MAX {
             self.world.set_step(step + 1);
             self.need_update = true;
         }
