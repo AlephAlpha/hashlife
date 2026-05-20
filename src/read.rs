@@ -1,8 +1,8 @@
 use crate::world::{Leaf, Node, World};
 use ca_formats::{
+    Input,
     macrocell::{Error as MacrocellError, Macrocell, NodeData},
     rle::{Error as RleError, Rle},
-    Input,
 };
 
 impl World {
@@ -34,7 +34,7 @@ impl World {
                 NodeData::Level1 { .. } => {
                     return Err(MacrocellError::InvalidNodeLine(
                         "Rules with more than 2 states are not supported".to_string(),
-                    ))
+                    ));
                 }
                 NodeData::Level3(n) => {
                     let nw = Node::Leaf(

@@ -1,10 +1,10 @@
 use flate2::read::GzDecoder;
 use hashlife::{
-    ca_formats::{macrocell::Macrocell, rle::Rle},
     World,
+    ca_formats::{macrocell::Macrocell, rle::Rle},
 };
 use sdl2::{
-    self,
+    self, Sdl,
     event::{Event, WindowEvent},
     keyboard::Keycode,
     mouse::MouseState,
@@ -12,7 +12,6 @@ use sdl2::{
     rect::Rect,
     render::Canvas,
     video::Window,
-    Sdl,
 };
 use std::{
     env::args,
@@ -281,10 +280,8 @@ impl App {
                         keycode: Some(Keycode::S | Keycode::Down),
                         ..
                     } => self.move_canvas(0, -10),
-                    Event::MouseMotion { xrel, yrel, .. } => {
-                        if mouse_state.left() {
-                            self.move_canvas(xrel as i64, yrel as i64);
-                        }
+                    Event::MouseMotion { xrel, yrel, .. } if mouse_state.left() => {
+                        self.move_canvas(xrel as i64, yrel as i64);
                     }
                     Event::MouseWheel { y, .. } => self.rescale(y, mouse_state),
                     Event::KeyDown {

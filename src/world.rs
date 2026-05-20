@@ -171,7 +171,7 @@ impl World {
         self.generation
     }
 
-    pub fn set_generation(&mut self, generation: u64) -> &mut Self {
+    pub const fn set_generation(&mut self, generation: u64) -> &mut Self {
         self.generation = generation;
         self
     }
@@ -225,16 +225,16 @@ impl World {
     }
 
     fn mark_gc(&mut self, node: Node) {
-        if let Node::NodeId(id) = node {
-            if !self[id].gc_mark {
-                self[id].gc_mark = true;
-                self.mark_gc(self[id].nw());
-                self.mark_gc(self[id].ne());
-                self.mark_gc(self[id].sw());
-                self.mark_gc(self[id].se());
-                if let Some(node) = self[id].cache_step {
-                    self.mark_gc(node);
-                }
+        if let Node::NodeId(id) = node
+            && !self[id].gc_mark
+        {
+            self[id].gc_mark = true;
+            self.mark_gc(self[id].nw());
+            self.mark_gc(self[id].ne());
+            self.mark_gc(self[id].sw());
+            self.mark_gc(self[id].se());
+            if let Some(node) = self[id].cache_step {
+                self.mark_gc(node);
             }
         }
     }

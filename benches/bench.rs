@@ -1,5 +1,5 @@
 use ca_formats::{macrocell::Macrocell, rle::Rle};
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use hashlife::World;
 use std::time::Duration;
 

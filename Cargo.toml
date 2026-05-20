@@ -2,18 +2,18 @@
 name = "hashlife"
 version = "0.1.0"
 authors = ["AlephAlpha <alephalpha911@gmail.com>"]
-edition = "2018"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 ca-formats = "0.3.5"
 ca-rules = "0.3.5"
-rustc-hash = "2.0.0"
-slab = "0.4.9"
+rustc-hash = "2.1.2"
+slab = "0.4.12"
 
 [dev-dependencies]
-criterion = "0.5.1"
+criterion = "0.8.2"
 
 [[bench]]
 name = "bench"
